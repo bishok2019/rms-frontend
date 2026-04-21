@@ -1,3 +1,4 @@
+import Cookies from "js-cookie";
 import { publicApiInstance, privateApiInstance } from "../../../Utils/ky";
 import type { ApiResponse, LoginResponse } from "@/types/api";
 
@@ -231,3 +232,10 @@ export const createUser = (body: CreateUserData) =>
   privateApiInstance
     .post("auth-app/users/create", { json: body })
     .json<ApiResponse<User>>();
+
+export const logout = () => {
+  const refreshToken = Cookies.get("refreshToken");
+  return privateApiInstance
+    .post("auth-app/logout", { json: { refreshToken } })
+    .json<ApiResponse<null>>();
+};

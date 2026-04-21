@@ -32,7 +32,7 @@ export default function RestaurantSetup() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6 flex items-center justify-between">
+      <div className="sticky top-0 z-10 pb-4 mb-6 flex items-center justify-between">
         <h1 className="text-2xl md:text-3xl font-bold">Restaurant Details</h1>
         <Button
           onClick={handleSave}

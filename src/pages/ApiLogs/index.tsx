@@ -108,7 +108,7 @@ export default function ApiLogsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4">
+      <div className="sticky top-0 z-10 pb-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">API Logs</h1>
           <Button onClick={() => fetchLogs(1)} disabled={loading}>

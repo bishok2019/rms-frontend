@@ -68,7 +68,7 @@ const otherOptions = [
 export default function SetupPage() {
   return (
     <div className="p-4 md:p-6 space-y-8">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-8">
+      <div className="sticky top-0 z-10 pb-4 mb-8">
         <h1 className="text-2xl md:text-3xl font-bold">Setup</h1>
         <p className="text-muted-foreground mt-1">
           Configure and manage your restaurant

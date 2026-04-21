@@ -113,7 +113,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="p-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6 flex justify-between items-center">
+      <div className="sticky top-0 z-10 pb-4 mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Employee Management</h1>
           <p className="text-muted-foreground">Manage restaurant employees</p>

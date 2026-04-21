@@ -3,6 +3,7 @@ import {
   changePassword,
   forgotPassword,
   login,
+  logout,
   register,
   resetPassword,
   type LoginType,
@@ -132,6 +133,47 @@ export const useResendOTPMutation = () => {
     },
     onError: (error: any) => {
       errorFunction(error?.message);
+    },
+  });
+};
+
+// logout mutation
+export const useLogoutMutation = () => {
+  return useMutation({
+    mutationFn: () => logout(),
+    onSuccess: () => {
+      // Client-side cleanup after successful backend logout
+      Cookies.remove("accessToken");
+      Cookies.remove("refreshToken");
+      useAuthenticationStore.getState().setAuthenticated(false);
+      useAuthenticationStore.getState().setProfileVerified(false);
+      useAuthenticationStore.getState().setUser(null);
+      useAuthenticationStore.getState().setEmail("");
+      useAuthenticationStore.getState().setPhoneNo("");
+      useAuthenticationStore.getState().setUsername("");
+      useAuthenticationStore.getState().setLoggedInUserId("");
+      useAuthenticationStore.getState().setAdmin(false);
+      useAuthenticationStore.getState().setPermissions([]);
+      useAuthenticationStore.getState().setRoles([]);
+      localStorage.removeItem("bishok-pos");
+    },
+    onError: (error: any) => {
+      // Even if backend logout fails, perform client-side cleanup
+      console.warn("Backend logout failed, performing client-side cleanup:", error);
+      Cookies.remove("accessToken");
+      Cookies.remove("refreshToken");
+      useAuthenticationStore.getState().setAuthenticated(false);
+      useAuthenticationStore.getState().setProfileVerified(false);
+      useAuthenticationStore.getState().setUser(null);
+      useAuthenticationStore.getState().setEmail("");
+      useAuthenticationStore.getState().setPhoneNo("");
+      useAuthenticationStore.getState().setUsername("");
+      useAuthenticationStore.getState().setLoggedInUserId("");
+      useAuthenticationStore.getState().setAdmin(false);
+      useAuthenticationStore.getState().setPermissions([]);
+      useAuthenticationStore.getState().setRoles([]);
+      localStorage.removeItem("bishok-pos");
+      errorFunction("Logout completed with warnings.");
     },
   });
 };

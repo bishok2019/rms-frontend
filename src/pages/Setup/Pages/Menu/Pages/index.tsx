@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trash2, Edit2, Plus } from "lucide-react";
 import { errorFunction } from "@/components/common/Alert";
 import { useCategories, useCreateMenuItem, useMenuItems, useUpdateMenuItem } from "../Store/MenuStores";
+import { useKitchens } from "../../Kitchen/Store/KitchenStores";
 import CreateCategory from "./CreateCategory";
 import CreateItem from "./CreateItem";
 import type { MenuCategory, MenuItem } from "@/types/api";
@@ -36,6 +37,8 @@ export default function MenuSetup() {
   const [activeTab, setActiveTab] = useState("categories");
   const { data: categoriesData } = useCategories();
   const categories = categoriesData?.data ?? [];
+  const { data: kitchensData } = useKitchens(activeTab === "items");
+  const kitchens = kitchensData?.data ?? [];
   const { data: menuItemsData } = useMenuItems(activeTab === "items");
   const menuItems = menuItemsData?.data ?? [];
 
@@ -46,6 +49,9 @@ export default function MenuSetup() {
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [itemSearch, setItemSearch] = useState("");
   const [itemCategoryFilter, setItemCategoryFilter] = useState("all");
+  const [itemKitchenFilter, setItemKitchenFilter] = useState("all");
+  const [itemAvailabilityFilter, setItemAvailabilityFilter] = useState("all");
+  const [itemVariantFilter, setItemVariantFilter] = useState("all");
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -109,21 +115,34 @@ export default function MenuSetup() {
 
   const filteredMenuItems = menuItems.filter((item) => {
     const categoryName = resolveNamedField(item.category);
+    const kitchenName = resolveNamedField(item.kitchen);
     const matchesCategory =
         itemCategoryFilter === "all" ||
         categoryName.trim().toLowerCase() ===
           itemCategoryFilter.trim().toLowerCase();
+    const matchesKitchen =
+        itemKitchenFilter === "all" ||
+        kitchenName.trim().toLowerCase() ===
+          itemKitchenFilter.trim().toLowerCase();
+    const matchesAvailability =
+        itemAvailabilityFilter === "all" ||
+        (itemAvailabilityFilter === "available" && item.isAvailable) ||
+        (itemAvailabilityFilter === "unavailable" && !item.isAvailable);
+    const matchesVariant =
+        itemVariantFilter === "all" ||
+        (itemVariantFilter === "variants" && item.isVariant) ||
+        (itemVariantFilter === "regular" && !item.isVariant);
     const matchesSearch =
       itemSearch.trim().length === 0 ||
       item.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
       (item.description || "").toLowerCase().includes(itemSearch.toLowerCase());
 
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesKitchen && matchesAvailability && matchesVariant && matchesSearch;
   });
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6">
+      <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
 
@@ -139,7 +158,7 @@ export default function MenuSetup() {
             <Dialog open={openCategory} onOpenChange={setOpenCategory}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-accent text-accent-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground w-full md:w-auto"
                   onClick={() => {
                     setEditingCategoryId(null);
                   }}
@@ -218,7 +237,7 @@ export default function MenuSetup() {
             <Dialog open={openItem} onOpenChange={setOpenItem}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-accent text-accent-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground w-full md:w-auto"
                   onClick={() => {
                     setEditingItemId(null);
                   }}
@@ -245,12 +264,12 @@ export default function MenuSetup() {
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                 <Input
                   value={itemSearch}
                   onChange={(e) => setItemSearch(e.target.value)}
                   placeholder="Search by item name or description"
-                  className="md:col-span-2"
+                  className="md:col-span-2 lg:col-span-2"
                 />
                 <select
                   value={itemCategoryFilter}
@@ -263,6 +282,36 @@ export default function MenuSetup() {
                       {category.name}
                     </option>
                   ))}
+                </select>
+                <select
+                  value={itemKitchenFilter}
+                  onChange={(e) => setItemKitchenFilter(e.target.value)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="all">All Kitchens</option>
+                  {kitchens.map((kitchen) => (
+                    <option key={kitchen.id} value={kitchen.name}>
+                      {kitchen.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={itemAvailabilityFilter}
+                  onChange={(e) => setItemAvailabilityFilter(e.target.value)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="all">All Availability</option>
+                  <option value="available">Available</option>
+                  <option value="unavailable">Unavailable</option>
+                </select>
+                <select
+                  value={itemVariantFilter}
+                  onChange={(e) => setItemVariantFilter(e.target.value)}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                >
+                  <option value="all">All Types</option>
+                  <option value="regular">Regular Items</option>
+                  <option value="variants">Variants</option>
                 </select>
               </div>
             </CardContent>
@@ -281,8 +330,13 @@ export default function MenuSetup() {
                   return (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-border p-4 min-h-[120px] bg-cover bg-center bg-no-repeat relative overflow-hidden"
-                    style={item.photo ? { backgroundImage: `url(${item.photo})` } : {}}
+                    className="rounded-lg border border-border p-4 min-h-[120px] bg-card relative overflow-hidden"
+                    style={item.photo ? {
+                      backgroundImage: `url(${item.photo})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat'
+                    } : {}}
                   >
                     {/* Overlay for text readability when there's a background image */}
                     {item.photo && (

@@ -19,17 +19,19 @@ import { ThemeToggle } from "../ui/theme-toggle";
 import { Menu } from "./menu";
 import { useBackgroundPreference } from "@/contexts/background-preference-context";
 import ProfilePage from "@/pages/Profile";
-import useAuthenticationStore from "@/pages/Authentication/Store/authenticationStore";
+import useAuthenticationStore, { useLogoutMutation } from "@/pages/Authentication/Store/authenticationStore";
+import { successFunction } from "@/components/common/Alert";
 
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
-  if (!sidebar) return null;
-  const { setIsHover, settings } = sidebar;
   const navigate = useNavigate();
   const { bgImagesEnabled, setBgImagesEnabled } = useBackgroundPreference();
   const username = useAuthenticationStore((state) => state.username);
-  const logout = useAuthenticationStore((state) => state.logout);
+  const logoutMutation = useLogoutMutation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  if (!sidebar) return null;
+  const { setIsHover, settings } = sidebar;
 
   return (
     <aside
@@ -95,7 +97,14 @@ export function Sidebar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => logout(navigate)}
+              onClick={() => {
+                logoutMutation.mutate(undefined, {
+                  onSuccess: () => {
+                    successFunction("Logged out successfully.");
+                    navigate("/");
+                  },
+                });
+              }}
               className="text-red-600 focus:text-red-600"
             >
               <LogOut className="mr-2 h-4 w-4" />

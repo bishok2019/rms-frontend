@@ -125,43 +125,49 @@ export interface Customer {
   updatedAt: string;
 }
 
+export type OrderType = "dine_in" | "takeaway" | "delivery";
+export type DietaryType = "veg" | "non_veg" | "vegan" | "gluten_free";
+export type SpiceLevel = "none" | "mild" | "medium" | "hot" | "extra_hot";
+export type OrderItemStatus = "pending" | "preparing" | "ready" | "served" | "cancelled";
+export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "served" | "completed" | "cancelled";
+export type OrderPaymentMethod = "cash" | "card" | "online" | "wallet" | "" | null;
+export type OrderPaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
 export interface OrderItem {
   id: number;
-  orderType: "dine_in" | "takeaway" | "delivery";
+  orderType: OrderType;
   order: number;
-  orderItem: number | string | NamedRelation;
+  orderItem: number | string | NamedRelation | null;
   quantity: number;
-  dietaryType: "veg" | "non_veg" | "vegan" | "gluten_free";
-  spiceLevel: "none" | "mild" | "medium" | "hot" | "extra_hot";
+  dietaryType: DietaryType;
+  spiceLevel: SpiceLevel;
   servingSize: string;
-  status: "pending" | "preparing" | "ready" | "served" | "cancelled";
+  status: OrderItemStatus;
   preparedAt: string | null;
   readyAt: string | null;
   servedAt: string | null;
-  note: string;
-  createdAt: string;
-  updatedAt: string;
+  note: string | null;
+  tableNumber?: string | null;
 }
 
 export interface Order {
   id: number;
-  customer: Customer | null;
   orderNumber: string;
-  diningTable: number | string | NamedRelation | null;
-  section: string | null;
   deliveryAddress: string;
-  status: "pending" | "confirmed" | "preparing" | "ready" | "served" | "completed" | "cancelled";
-  paymentMethod: "cash" | "card" | "online" | "wallet" | null;
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  deliveryCharge: number;
-  servedBy: string | null;
-  totalItems: number;
+  status: OrderStatus;
+  paymentMethod: OrderPaymentMethod;
+  paymentStatus: OrderPaymentStatus;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  deliveryCharge: string;
   confirmedAt: string | null;
   completedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  customer: Customer | number | null;
+  diningTable: number | string | null;
+  servedBy: number | string | null;
+  createdAt?: string;
+  totalItems?: number;
+  section?: string | null;
   orderItems?: OrderItem[];
 }

@@ -99,12 +99,12 @@ export default function MembersSetup() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="sticky top-0 z-10 pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Members Management</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button
-              className="bg-accent text-accent-foreground w-full md:w-auto"
+              className="bg-primary text-primary-foreground w-full md:w-auto"
               onClick={() => {
                 setEditingId(null);
                 setFormData({ name: "", email: "", role: "Staff", phone: "" });

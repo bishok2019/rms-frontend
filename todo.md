@@ -29,7 +29,14 @@ This document outlines the current state of API integrations in the Restaurant P
 - ✅ Menu Categories: Create (`/api/v1/core-app/menu/create`), List (`/api/v1/core-app/menu/list`), Update (`/api/v1/core-app/menu/update/{id}`)
 - ✅ Menu Items: Create (`/api/v1/core-app/menu/items/create`), List (`/api/v1/core-app/menu/items/list`), Update (`/api/v1/core-app/menu/items/update/{id}`)
 - ✅ Orders: Create (`/api/v1/core-app/orders/create`), List (`/api/v1/core-app/orders/list`), Retrieve (`/api/v1/core-app/orders/retrieve/{id}`), Update (`/api/v1/core-app/orders/update/{id}`)
-- ✅ Order Items: List (`/api/v1/core-app/order_items/list`)
+ - ✅ Order Items: List with Advanced Filtering (`/api/v1/core-app/order_items/list`)
+   - Kitchen-wise filtering (by kitchen ID)
+   - Table-wise filtering (by dining table ID)
+   - Status filtering (preparing, ready, served)
+   - Dietary type filtering (veg, non_veg, vegan, gluten_free)
+   - Spice level filtering (mild, medium, hot, extra_hot)
+   - Order type filtering (dine_in, takeaway, delivery)
+   - Serving size filtering (small, medium, large, extra_large)
 - ✅ Sections: Create (`/api/v1/core-app/section/create`), List (`/api/v1/core-app/section/list`), Update (`/api/v1/core-app/section/update/{id}`)
 
 ### Location (location-app)
@@ -43,7 +50,7 @@ This document outlines the current state of API integrations in the Restaurant P
 ### Authentication (auth-app)
 - ❌ Contact Us: Create (`/api/v1/auth-app/contact-us/create`), List (`/api/v1/auth-app/contact-us/list`)
 - ❌ Get All Profile List (`/api/v1/auth-app/get-all-profile-list`)
-- ❌ Logout (`/api/v1/auth-app/logout`) - Note: Currently handled client-side
+- ✅ Logout (`/api/v1/auth-app/logout`) - Backend API integration implemented
 - ❌ Refresh Token (`/api/v1/auth-app/refresh-token`)
 - ❌ Roles: Create (`/api/v1/auth-app/role/create`), List (`/api/v1/auth-app/role/list`), Retrieve (`/api/v1/auth-app/role/retrieve/{id}`), Update (`/api/v1/auth-app/role/update/{id}`), Dropdown (`/api/v1/auth-app/role/list/dropdown`)
 - ❌ Permissions Dropdown (`/api/v1/auth-app/permissions/permission/list/dropdown`)
@@ -60,6 +67,23 @@ This document outlines the current state of API integrations in the Restaurant P
 
 ### Customer App (customer-app)
 - ❌ Customers: Create (`/api/v1/customer-app/customer/create`), List (`/api/v1/customer-app/customer/list`), Retrieve (`/api/v1/customer-app/customer/retrieve/{id}`), Update (`/api/v1/customer-app/customer/update/{id}`)
+
+## UI Features Implemented
+
+### Kitchen Management
+- ✅ Double-click kitchen in list to view order items for that kitchen
+- ✅ Kitchen-wise filter with status, dietary type, and other criteria
+
+### Table Management
+- ✅ Click on table cards to view order items for that table
+- ✅ Comprehensive table-wise filtering with multiple criteria:
+  - Table selection dropdown
+  - Status filtering
+  - Dietary type filtering
+  - Spice level filtering
+  - Order type filtering
+  - Serving size filtering
+  - Clear all filters functionality
 
 ## Notes
 - Some retrieve endpoints may not be immediately needed if list views provide sufficient data

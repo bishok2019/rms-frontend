@@ -4,16 +4,19 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import type { Order, OrderItem } from "../../types/api";
 import { ordersApi } from "../../services/orders";
-import { User, Phone, MapPin, Receipt } from "lucide-react";
+import { User, Phone, MapPin, Receipt, Edit2 } from "lucide-react";
+import { Button } from "../ui/button";
 
 interface OrderDetailsProps {
   order: Order | null;
+  onEditItem?: (item: OrderItem) => void;
 }
 
-export function OrderDetails({ order }: OrderDetailsProps) {
+export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const customer = order && typeof order.customer === "object" ? order.customer : null;
 
   useEffect(() => {
     if (order) {
@@ -60,6 +63,14 @@ export function OrderDetails({ order }: OrderDetailsProps) {
     }
   };
 
+  const getOrderItemLabel = (item: OrderItem) => {
+    if (!item.orderItem) {
+      return "Unnamed item";
+    }
+
+    return typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem;
+  };
+
 
 
 
@@ -96,25 +107,25 @@ export function OrderDetails({ order }: OrderDetailsProps) {
           <CardTitle className="text-base">Customer Details</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          {order.customer ? (
+          {customer ? (
             <div className="grid grid-cols-1 gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <User className="h-3 w-3 text-muted-foreground" />
-                <span className="font-medium">{order.customer.fullName}</span>
+                <span className="font-medium">{customer.fullName}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-3 w-3 text-muted-foreground" />
-                <span>{order.customer.phone}</span>
+                <span>{customer.phone}</span>
               </div>
-              {order.customer.address && (
+              {customer.address && (
                 <div className="flex items-start gap-2">
                   <MapPin className="h-3 w-3 text-muted-foreground mt-0.5" />
-                  <span className="text-xs">{order.customer.address}</span>
+                  <span className="text-xs">{customer.address}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground text-xs">Points:</span>
-                <span className="font-medium">{order.customer.loyaltyPoints}</span>
+                <span className="font-medium">{customer.loyaltyPoints}</span>
               </div>
             </div>
           ) : (
@@ -160,9 +171,7 @@ export function OrderDetails({ order }: OrderDetailsProps) {
                   <div className="flex-1 min-w-0">
                     <div className="mb-2">
                       <h4 className="font-medium text-sm">
-                        {typeof item.orderItem === "object"
-                          ? item.orderItem.name
-                          : item.orderItem}
+                        {getOrderItemLabel(item)}
                       </h4>
                     </div>
 
@@ -176,13 +185,24 @@ export function OrderDetails({ order }: OrderDetailsProps) {
                       )}
                     </div>
 
-                    {item.note && (
-                      <p className="text-xs text-muted-foreground italic">
-                        Note: {item.note}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                     {item.note && (
+                       <p className="text-xs text-muted-foreground italic">
+                         Note: {item.note}
+                       </p>
+                     )}
+                   </div>
+                   {onEditItem && (
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => onEditItem(item)}
+                       className="self-start"
+                     >
+                       <Edit2 className="h-3 w-3 mr-1" />
+                       Edit
+                     </Button>
+                   )}
+                 </div>
               ))}
             </div>
           )}

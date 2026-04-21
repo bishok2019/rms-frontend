@@ -164,12 +164,12 @@ export default function UsersPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="sticky top-0 z-10 pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Users Management</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button
-              className="bg-accent text-accent-foreground w-full md:w-auto"
+              className="bg-primary text-primary-foreground w-full md:w-auto"
               onClick={handleCreate}
             >
               Add User
@@ -297,7 +297,7 @@ export default function UsersPage() {
       {/* Search and Filters */}
       <Card className="bg-card border-border p-4">
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
+          <div className="flex-1 space-y-2">
             <Label htmlFor="search">Search</Label>
             <Input
               id="search"
@@ -307,7 +307,7 @@ export default function UsersPage() {
               className="bg-background text-foreground border-border"
             />
           </div>
-          <div className="w-full md:w-48">
+          <div className="w-full md:w-48 space-y-2">
             <Label htmlFor="user_type_filter">User Type</Label>
             <select
               id="user_type_filter"
@@ -323,7 +323,7 @@ export default function UsersPage() {
               <option value="system">System</option>
             </select>
           </div>
-          <div className="w-full md:w-48">
+          <div className="w-full md:w-48 space-y-2">
             <Label htmlFor="status_filter">Status</Label>
             <select
               id="status_filter"

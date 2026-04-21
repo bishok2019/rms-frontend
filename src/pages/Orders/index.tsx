@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { OrderList } from "../../components/orders/OrderList";
 import { OrderDetails } from "../../components/orders/OrderDetails";
 import { OrderForm } from "../../components/orders/OrderForm";
-import type { Order } from "../../types/api";
+import type { Order, OrderItem } from "../../types/api";
 import { useOrdersStore } from "../../stores/ordersStore";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { AlertCircle, Lock } from "lucide-react";
@@ -13,6 +13,8 @@ import useAuthenticationStore from "../Authentication/Store/authenticationStore"
 export default function OrdersPage() {
   const { error, clearError } = useOrdersStore();
   const [selectedOrder, setSelectedOrderState] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { isAuthenticated } = useAuthenticationStore();
 
@@ -23,6 +25,15 @@ export default function OrdersPage() {
   const handleOrderCreateSuccess = (_newOrder: Order) => {
     setRefreshTrigger(prev => prev + 1);
     setSelectedOrderState(null);
+    setEditingOrder(null);
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditingOrder(order);
+  };
+
+  const handleEditItem = (item: OrderItem) => {
+    setEditingItem(item);
   };
 
 
@@ -51,14 +62,14 @@ export default function OrdersPage() {
 
   return (
     <div className="p-6 h-full">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6 flex justify-between items-center">
+      <div className="sticky top-0 z-10 pb-4 mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Orders Management</h1>
           <p className="text-muted-foreground">
             View and manage restaurant orders
           </p>
         </div>
-        <OrderForm onSuccess={handleOrderCreateSuccess} />
+        <OrderForm onSuccess={handleOrderCreateSuccess} editingOrder={editingOrder} editingItem={editingItem} />
       </div>
 
       {error && (
@@ -71,12 +82,12 @@ export default function OrdersPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)] overflow-hidden">
         {/* Left side - Order List */}
         <div className="h-full overflow-y-auto">
-          <OrderList onOrderSelect={handleOrderSelect} refreshTrigger={refreshTrigger} />
+          <OrderList onOrderSelect={handleOrderSelect} onEditOrder={handleEditOrder} refreshTrigger={refreshTrigger} />
         </div>
 
         {/* Right side - Order Details */}
         <div className="h-full overflow-y-auto">
-          <OrderDetails order={selectedOrder} />
+          <OrderDetails order={selectedOrder} onEditItem={handleEditItem} />
         </div>
       </div>
     </div>

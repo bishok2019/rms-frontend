@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Edit, Trash2, Plus, Grid3x3 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Edit, Trash2, Plus, Grid3x3, Loader2, ChefHat } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { TableDetailModal } from "../components/table-detail-modal";
 import {
   Dialog,
@@ -26,7 +34,16 @@ import {
   useUpdateDiningTable,
 } from "../Store/TablesStore";
 import { Input } from "@/components/ui/input";
-import type { DiningTable, Section } from "@/types/api";
+import { ordersApi } from "@/services/orders";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { DiningTable, Section, OrderItem } from "@/types/api";
 
 interface TableRecord {
   id: string;
@@ -57,14 +74,24 @@ export default function TablesPage() {
   const [selectedArea, setSelectedArea] = useState<Section | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"areas" | "tables">("areas");
+  const [activeTab, setActiveTab] = useState<"areas" | "tables" | "order-items">("areas");
   const [tableSearch, setTableSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "occupied" | "vacant">(
     "all"
   );
-  const { data: sectionsResponse } = useSections(activeTab === "areas");
-  const { data: diningTablesResponse } = useDiningTables(activeTab === "tables");
+  const [selectedTableForOrders, setSelectedTableForOrders] = useState<TableRecord | null>(null);
+  const [tableOrderItems, setTableOrderItems] = useState<OrderItem[]>([]);
+  const [isLoadingOrderItems, setIsLoadingOrderItems] = useState(false);
+  const [orderItemFilters, setOrderItemFilters] = useState({
+    status: "all",
+    dietaryType: "all",
+    spiceLevel: "all",
+    orderType: "all",
+    servingSize: "all",
+  });
+  const { data: sectionsResponse } = useSections(activeTab === "areas" || activeTab === "tables");
+  const { data: diningTablesResponse } = useDiningTables(activeTab === "tables" || activeTab === "order-items");
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
@@ -90,7 +117,54 @@ export default function TablesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteTable = (_id: string) => {};
+  const handleDeleteTable = (id: string) => {
+    // TODO: Implement delete functionality
+    console.log("Delete table:", id);
+  };
+
+  const handleTableClick = async (table: TableRecord) => {
+    setSelectedTableForOrders(table);
+    setActiveTab("order-items");
+    // Reset filters to default when selecting a new table
+    setOrderItemFilters({
+      status: "all",
+      dietaryType: "all",
+      spiceLevel: "all",
+      orderType: "all",
+      servingSize: "all",
+    });
+    await fetchTableOrderItems(table.id);
+  };
+
+  const fetchTableOrderItems = async (tableNumber: string) => {
+    try {
+      setIsLoadingOrderItems(true);
+      const params: Parameters<typeof ordersApi.getOrderItemsList>[0] = {
+        order__dining_table: tableNumber,
+        page_size: 100,
+      };
+
+      // Add filters
+      if (orderItemFilters.status !== "all") params.status = orderItemFilters.status;
+      if (orderItemFilters.dietaryType !== "all") params.dietary_type = orderItemFilters.dietaryType;
+      if (orderItemFilters.spiceLevel !== "all") params.spice_level = orderItemFilters.spiceLevel;
+      if (orderItemFilters.orderType !== "all") params.order_type = orderItemFilters.orderType;
+      if (orderItemFilters.servingSize !== "all") params.serving_size = orderItemFilters.servingSize;
+
+      const response = await ordersApi.getOrderItemsList(params);
+
+      if (response.success && response.data) {
+        setTableOrderItems(response.data);
+      } else {
+        setTableOrderItems([]);
+      }
+    } catch (error) {
+      console.error("Error fetching table order items:", error);
+      setTableOrderItems([]);
+    } finally {
+      setIsLoadingOrderItems(false);
+    }
+  };
 
   const handleSaveTable = async (table: TableRecord) => {
     const selectedSection = areas.find((area) => area.name === table.area);
@@ -117,7 +191,7 @@ export default function TablesPage() {
   };
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 mb-6">
+      <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Tables & Areas</h1>
       </div>
 
@@ -142,6 +216,19 @@ export default function TablesPage() {
         >
           Tables
         </button>
+        {selectedTableForOrders && (
+          <button
+            onClick={() => setActiveTab("order-items")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "order-items"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ChefHat className="w-4 h-4 mr-1 inline" />
+            Table {selectedTableForOrders.tableCode} Orders
+          </button>
+        )}
       </div>
 
       {/* Areas Tab */}
@@ -151,7 +238,7 @@ export default function TablesPage() {
             <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
               <SheetTrigger asChild>
                 <Button
-                  className="bg-accent text-accent-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground w-full md:w-auto"
                   onClick={() => {
                     setSelectedArea(null);
                   }}
@@ -253,7 +340,7 @@ export default function TablesPage() {
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-accent text-accent-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground w-full md:w-auto"
                   onClick={() => {
                     setSelectedTable(null);
                   }}
@@ -346,7 +433,9 @@ export default function TablesPage() {
                 {filteredTables.map((table) => (
                   <div
                     key={table.id}
-                    className="rounded-lg border border-border bg-background/40 p-4"
+                    className="rounded-lg border border-border bg-background/40 p-4 cursor-pointer hover:bg-secondary/40 transition-colors"
+                    onClick={() => handleTableClick(table)}
+                    title="Click to view order items"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
@@ -405,6 +494,242 @@ export default function TablesPage() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Order Items Tab */}
+      {activeTab === "order-items" && selectedTableForOrders && (
+        <div className="space-y-4">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ChefHat className="h-5 w-5" />
+                Table Order Items Filter
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tableFilter">Table</Label>
+                  <Select
+                    value={selectedTableForOrders?.id || ""}
+                    onValueChange={(value) => {
+                      const table = tables.find(t => t.id === value);
+                      if (table) {
+                        setSelectedTableForOrders(table);
+                        fetchTableOrderItems(table.id);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Table" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tables.map((table) => (
+                        <SelectItem key={table.id} value={table.id}>
+                          {table.tableCode} ({table.area})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="statusFilter">Status</Label>
+                  <Select
+                    value={orderItemFilters.status}
+                    onValueChange={(value) => {
+                      setOrderItemFilters(prev => ({ ...prev, status: value }));
+                      fetchTableOrderItems(selectedTableForOrders.id);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="preparing">Preparing</SelectItem>
+                      <SelectItem value="ready">Ready</SelectItem>
+                      <SelectItem value="served">Served</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dietaryFilter">Dietary Type</Label>
+                  <Select
+                    value={orderItemFilters.dietaryType}
+                    onValueChange={(value) => {
+                      setOrderItemFilters(prev => ({ ...prev, dietaryType: value }));
+                      fetchTableOrderItems(selectedTableForOrders.id);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="veg">🥬 Veg</SelectItem>
+                      <SelectItem value="non_veg">🍖 Non-Veg</SelectItem>
+                      <SelectItem value="vegan">🌱 Vegan</SelectItem>
+                      <SelectItem value="gluten_free">🌾 Gluten-Free</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="spiceFilter">Spice Level</Label>
+                  <Select
+                    value={orderItemFilters.spiceLevel}
+                    onValueChange={(value) => {
+                      setOrderItemFilters(prev => ({ ...prev, spiceLevel: value }));
+                      fetchTableOrderItems(selectedTableForOrders.id);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="mild">Mild</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hot">Hot</SelectItem>
+                      <SelectItem value="extra_hot">Extra Hot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="orderTypeFilter">Order Type</Label>
+                  <Select
+                    value={orderItemFilters.orderType}
+                    onValueChange={(value) => {
+                      setOrderItemFilters(prev => ({ ...prev, orderType: value }));
+                      fetchTableOrderItems(selectedTableForOrders.id);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="dine_in">Dine In</SelectItem>
+                      <SelectItem value="takeaway">Takeaway</SelectItem>
+                      <SelectItem value="delivery">Delivery</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="servingFilter">Serving Size</Label>
+                  <Select
+                    value={orderItemFilters.servingSize}
+                    onValueChange={(value) => {
+                      setOrderItemFilters(prev => ({ ...prev, servingSize: value }));
+                      fetchTableOrderItems(selectedTableForOrders.id);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sizes</SelectItem>
+                      <SelectItem value="small">Small</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="large">Large</SelectItem>
+                      <SelectItem value="extra_large">Extra Large</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setOrderItemFilters({
+                      status: "all",
+                      dietaryType: "all",
+                      spiceLevel: "all",
+                      orderType: "all",
+                      servingSize: "all",
+                    });
+                    fetchTableOrderItems(selectedTableForOrders.tableCode);
+                  }}
+                  className="text-muted-foreground"
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border overflow-hidden">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ChefHat className="h-5 w-5" />
+                Order Items for Table {selectedTableForOrders.tableCode}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Clicked table to view all order items assigned to this table
+              </p>
+            </CardHeader>
+            <CardContent>
+              {isLoadingOrderItems ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Loading order items...</span>
+                </div>
+              ) : tableOrderItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ChefHat className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No order items found for this table</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-foreground">Order #</TableHead>
+                        <TableHead className="text-foreground">Item</TableHead>
+                        <TableHead className="text-foreground">Quantity</TableHead>
+                        <TableHead className="text-foreground">Status</TableHead>
+                        <TableHead className="text-foreground">Dietary Type</TableHead>
+                        <TableHead className="text-foreground">Prepared At</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tableOrderItems.map((item) => (
+                        <TableRow key={item.id} className="border-border hover:bg-secondary/50">
+                          <TableCell className="font-medium">#{item.order}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.orderItem ? (typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem) : "Unknown Item"}
+                          </TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              item.status === "preparing"
+                                ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                                : item.status === "ready"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                : item.status === "served"
+                                ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                            }`}>
+                              {item.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.dietaryType === "veg" && "🥬 Veg"}
+                            {item.dietaryType === "non_veg" && "🍖 Non-Veg"}
+                            {item.dietaryType === "vegan" && "🌱 Vegan"}
+                            {item.dietaryType === "gluten_free" && "🌾 Gluten-Free"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.preparedAt ? new Date(item.preparedAt).toLocaleString() : "Not started"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
