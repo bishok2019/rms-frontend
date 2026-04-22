@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Shield,
   UserCheck,
+  Receipt,
 } from "lucide-react";
 import { cn } from "../../Utils/utils";
 import useAuthenticationStore from "@/pages/Authentication/Store/authenticationStore";
@@ -83,6 +84,12 @@ export const menuItems = [
     label: "API Logs",
     icon: FileCode,
     permissions: ["admin"], // Assuming only admin can view logs
+  },
+  {
+    href: "/pos",
+    label: "POS",
+    icon: Receipt,
+    permissions: ["pos", "view_pos"], // POS permissions
   },
   {
     href: "/orders",

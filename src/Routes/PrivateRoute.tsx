@@ -14,6 +14,7 @@ import RestaurantSetup from "../pages/Setup/Pages/Restaurant/Page";
 import UsersPage from "../pages/Users";
 import ApiLogsPage from "../pages/ApiLogs";
 import OrdersPage from "../pages/Orders";
+import POSPage from "../pages/POS";
 import RolesPage from "../pages/Roles";
 import PermissionsPage from "../pages/Permissions";
 import EmployeesPage from "../pages/Employees";
@@ -52,6 +53,7 @@ const PrivateRoutes = () => {
           <Route path="/api-logs" element={<ApiLogsPage />} />
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/pos" element={<POSPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
         </Route>

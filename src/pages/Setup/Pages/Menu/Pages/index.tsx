@@ -381,7 +381,7 @@ export default function MenuSetup() {
 
                     <div className="mt-4 flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Price</span>
-                      <span className="font-semibold">Rs {item.price}</span>
+                      <span className="font-semibold text-red-600">{item.price}</span>
                     </div>
                   </div>
                   );

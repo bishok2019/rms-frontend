@@ -31,13 +31,14 @@ export function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   if (!sidebar) return null;
-  const { setIsHover, settings } = sidebar;
+  const { setIsHover, settings, getOpenState } = sidebar;
 
   return (
     <aside
       className={cn(
         "fixed top-0 left-0 z-20 h-screen w-72 font-poppins scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent",
-        settings.disabled && "hidden"
+        settings.disabled && "hidden",
+        !getOpenState() && "lg:hidden"
       )}
     >
       <div
