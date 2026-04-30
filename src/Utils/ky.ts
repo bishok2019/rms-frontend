@@ -4,7 +4,7 @@ import { errorFunction } from "../components/common/Alert";
 import useAuthenticationStore from "../pages/Authentication/Store/authenticationStore";
 
 const apiBaseUrl = (
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:8001"
+  import.meta.env.VITE_API_URL || "http://192.168.1.97:8001"
 ).replace(/\/$/, "");
 
 const apiSocketUrl = import.meta.env.VITE_API_SOCKET_URL;
