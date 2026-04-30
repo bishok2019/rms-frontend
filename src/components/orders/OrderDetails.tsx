@@ -79,7 +79,7 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
 
   if (!order) {
     return (
-      <Card className="h-full">
+      <Card className="">
         <CardContent className="flex items-center justify-center h-full">
           <div className="text-center text-muted-foreground">
             <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />

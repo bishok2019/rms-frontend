@@ -132,4 +132,14 @@
   body {
     @apply bg-background text-foreground;
   }
+  ::-webkit-scrollbar{
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track{
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb{
+    background-color: var(--color-border);
+    border-radius: 4px;
+  }
 }

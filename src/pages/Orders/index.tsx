@@ -81,12 +81,12 @@ export default function OrdersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)] overflow-hidden">
         {/* Left side - Order List */}
-        <div className="h-full overflow-y-auto">
+        <div className="overflow-y-auto" style={{minHeight:"max-content"}}>
           <OrderList onOrderSelect={handleOrderSelect} onEditOrder={handleEditOrder} refreshTrigger={refreshTrigger} />
         </div>
 
         {/* Right side - Order Details */}
-        <div className="h-full overflow-y-auto">
+        <div className="h-full overflow-y-hidden">
           <OrderDetails order={selectedOrder} onEditItem={handleEditItem} />
         </div>
       </div>

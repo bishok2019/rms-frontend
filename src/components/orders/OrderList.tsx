@@ -118,7 +118,7 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
   console.log("OrderList rendering content", { orders, isLoading, filteredOrders: filteredOrders.length });
 
   return (
-    <Card className="h-full">
+    <Card className="h-full overflow-auto">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Orders</CardTitle>
         <div className="flex gap-2">

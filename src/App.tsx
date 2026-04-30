@@ -73,7 +73,7 @@ function App() {
       value={{ bgImagesEnabled, setBgImagesEnabled }}
     >
       <div className="relative min-h-screen overflow-x-hidden isolate">
-        {bgImagesEnabled ? (
+        {/* {bgImagesEnabled ? (
           <div className="fixed inset-0 z-0">
             {bgImage ? (
               <img
@@ -90,7 +90,7 @@ function App() {
               }
             />
           </div>
-        ) : null}
+        ) : null} */}
 
         <div className="relative z-10">
           {isAuthenticated ? <PrivateRoutes /> : <PublicRoutes />}

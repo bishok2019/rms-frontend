@@ -63,7 +63,7 @@ export function Sidebar() {
           </Link>
         </Button>
         <div className="flex items-center justify-between mb-4 gap-3">
-          <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-200">
+          {/* <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-200">
             <input
               type="checkbox"
               checked={bgImagesEnabled}
@@ -71,7 +71,7 @@ export function Sidebar() {
               className="h-4 w-4 rounded border-zinc-400"
             />
             BG images
-          </label>
+          </label> */}
           <ThemeToggle />
         </div>
         <Menu isOpen={true} />
