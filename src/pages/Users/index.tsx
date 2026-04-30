@@ -278,7 +278,7 @@ export default function UsersPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={updating || creating}
-                className="w-full bg-accent text-accent-foreground"
+                className="w-full"
               >
                 {(updating || creating) ? (
                   <>

@@ -233,7 +233,7 @@ export default function InventorySetup() {
               </div>
               <Button
                 onClick={handleAdd}
-                className="w-full bg-accent text-accent-foreground"
+               className="w-full"
               >
                 {editingId ? "Update" : "Add"} Item
               </Button>

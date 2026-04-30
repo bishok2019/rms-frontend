@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Separator } from "../../components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Textarea } from "../../components/ui/textarea";
-import { Search, Settings, Plus, Minus, Receipt, X } from "lucide-react";
+import { Search, Settings, Plus, Minus, Receipt, X, Trash2 } from "lucide-react";
 import type { MenuItem, PaginatedApiResponse } from "../../types/api";
 import useAuthenticationStore from "../../pages/Authentication/Store/authenticationStore";
 import { Lock } from "lucide-react";
@@ -388,6 +388,8 @@ function Sidebar({
   setSelectedTable,
   onUpdateQuantity,
   onConfirmOrder,
+  onClearAll,
+  onRemoveItem,
   isCreatingOrder
 }: {
   cart: CartItem[];
@@ -397,6 +399,8 @@ function Sidebar({
   setSelectedTable: (table: string) => void;
   onUpdateQuantity: (itemId: number, quantity: number) => void;
   onConfirmOrder: () => void;
+  onClearAll: () => void;
+  onRemoveItem: (itemId: number) => void;
   isCreatingOrder: boolean;
 }) {
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -447,7 +451,20 @@ function Sidebar({
 
       {/* Cart Items */}
       <div className="flex-1 overflow-y-auto p-4">
-        <h3 className="font-semibold mb-3">Current Order</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">Current Order</h3>
+          {cart.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onClearAll}
+              className="h-8 px-2 text-xs"
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Clear All
+            </Button>
+          )}
+        </div>
         {cart.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             <Receipt className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -478,6 +495,14 @@ function Sidebar({
                     className="h-6 w-6 p-0"
                   >
                     <Plus className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRemoveItem(item.id)}
+                    className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <X className="h-3 w-3" />
                   </Button>
                 </div>
               </div>
@@ -572,6 +597,16 @@ export default function POSPage() {
         item.id === itemId ? { ...item, quantity: newQuantity } : item
       ));
     }
+  }, []);
+
+  const clearAllItems = useCallback(() => {
+    setCart([]);
+    toast.success("All items cleared from cart");
+  }, []);
+
+  const removeItem = useCallback((itemId: number) => {
+    setCart(prev => prev.filter(item => item.id !== itemId));
+    toast.success("Item removed from cart");
   }, []);
 
   const handleConfirmOrder = useCallback(async () => {
@@ -691,6 +726,8 @@ export default function POSPage() {
         setSelectedTable={setSelectedTable}
         onUpdateQuantity={updateQuantity}
         onConfirmOrder={handleConfirmOrder}
+        onClearAll={clearAllItems}
+        onRemoveItem={removeItem}
         isCreatingOrder={isCreatingOrder}
       />
       <CustomizeModal

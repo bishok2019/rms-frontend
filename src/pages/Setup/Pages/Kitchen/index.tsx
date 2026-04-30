@@ -285,7 +285,7 @@ export default function KitchenPage() {
                   </div>
                   <Button
                     onClick={handleCategorySubmit}
-                    className="w-full bg-accent text-accent-foreground"
+                   className="w-full"
                   >
                     {editingCategory ? "Update" : "Create"} Category
                   </Button>
@@ -415,7 +415,7 @@ export default function KitchenPage() {
                   </div>
                   <Button
                     onClick={handleKitchenSubmit}
-                    className="w-full bg-accent text-accent-foreground"
+                   className="w-full"
                   >
                     {editingKitchen ? "Update" : "Create"} Kitchen
                   </Button>

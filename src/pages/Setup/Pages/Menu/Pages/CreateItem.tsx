@@ -383,7 +383,7 @@ export default function CreateItem({
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="w-full bg-accent text-accent-foreground"
+             className="w-full"
             >
               {isSubmitting ? "Saving..." : item ? "Update Item" : "Create Item"}
             </Button>
