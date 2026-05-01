@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { privateApiInstance } from "@/Utils/ky";
+import type { PaginatedApiResponse } from "@/types/api";
 
 interface PermissionCategory {
   id: number;
@@ -37,7 +38,7 @@ export default function PermissionsPage() {
     try {
       console.log("Fetching categories...");
       const response = await privateApiInstance.get("auth-app/permissions/permission-category/list");
-      const data = await response.json();
+      const data = await response.json() as PaginatedApiResponse<PermissionCategory>;
       console.log("Categories response:", data);
       setCategories(data.results || data.data || []);
     } catch (error) {
@@ -52,7 +53,7 @@ export default function PermissionsPage() {
     try {
       console.log("Fetching permissions for category:", categoryId);
       const response = await privateApiInstance.get(`auth-app/permissions/permission/list?category=${categoryId}`);
-      const data = await response.json();
+      const data = await response.json() as PaginatedApiResponse<unknown>;
       console.log("Permissions response:", data);
       setPermissions(data.results || data.data || []);
     } catch (error) {

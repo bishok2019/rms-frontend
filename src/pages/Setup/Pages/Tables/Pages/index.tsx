@@ -35,6 +35,7 @@ import {
 } from "../Store/TablesStore";
 import { Input } from "@/components/ui/input";
 import { ordersApi } from "@/services/orders";
+import { successFunction, errorFunction } from "@/components/common/Alert";
 import {
   Table,
   TableBody,
@@ -82,6 +83,7 @@ export default function TablesPage() {
   );
   const [selectedTableForOrders, setSelectedTableForOrders] = useState<TableRecord | null>(null);
   const [tableOrderItems, setTableOrderItems] = useState<OrderItem[]>([]);
+  const [editingQuantity, setEditingQuantity] = useState<{ id: number; quantity: number } | null>(null);
   const [isLoadingOrderItems, setIsLoadingOrderItems] = useState(false);
   const [orderItemFilters, setOrderItemFilters] = useState({
     status: "all",
@@ -90,8 +92,8 @@ export default function TablesPage() {
     orderType: "all",
     servingSize: "all",
   });
-  const { data: sectionsResponse } = useSections(activeTab === "areas" || activeTab === "tables");
-  const { data: diningTablesResponse } = useDiningTables(activeTab === "tables" || activeTab === "order-items");
+  const { data: sectionsResponse } = useSections(true); // Always load sections
+  const { data: diningTablesResponse } = useDiningTables(activeTab === "areas" || activeTab === "tables" || activeTab === "order-items");
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
@@ -134,6 +136,34 @@ export default function TablesPage() {
       servingSize: "all",
     });
     await fetchTableOrderItems(table.id);
+  };
+
+  const handleEditQuantity = (item: OrderItem) => {
+    setEditingQuantity({ id: item.id, quantity: item.quantity });
+  };
+
+  const handleSaveQuantity = async () => {
+    if (!editingQuantity) return;
+
+    try {
+      await ordersApi.updateOrderItem(editingQuantity.id, { quantity: editingQuantity.quantity });
+      // Update local state
+      setTableOrderItems(prev =>
+        prev.map(item =>
+          item.id === editingQuantity.id
+            ? { ...item, quantity: editingQuantity.quantity }
+            : item
+        )
+      );
+      setEditingQuantity(null);
+      successFunction("Quantity updated successfully.");
+    } catch (error) {
+      errorFunction("Failed to update quantity.");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingQuantity(null);
   };
 
   const fetchTableOrderItems = async (tableNumber: string) => {
@@ -190,55 +220,55 @@ export default function TablesPage() {
     setSelectedTable(null);
   };
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Tables & Areas</h1>
       </div>
 
-      <div className="flex gap-2 border-b border-border">
-        <button
-          onClick={() => setActiveTab("areas")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "areas"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Areas
-        </button>
-        <button
-          onClick={() => setActiveTab("tables")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "tables"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Tables
-        </button>
-        {selectedTableForOrders && (
+      <div className="flex gap-2 border-b border-border justify-between items-center">
+        <div className="flex gap-2">
           <button
-            onClick={() => setActiveTab("order-items")}
+            onClick={() => setActiveTab("areas")}
             className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "order-items"
+              activeTab === "areas"
                 ? "border-b-2 border-primary text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <ChefHat className="w-4 h-4 mr-1 inline" />
-            Table {selectedTableForOrders.tableCode} Orders
+            Areas
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => setActiveTab("tables")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "tables"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Tables
+          </button>
+          {selectedTableForOrders && (
+            <button
+              onClick={() => setActiveTab("order-items")}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === "order-items"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ChefHat className="w-4 h-4 mr-1 inline" />
+              Table {selectedTableForOrders.tableCode} Orders
+            </button>
+          )}
+        </div>
 
-      {/* Areas Tab */}
-      {activeTab === "areas" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
+        {/* Add button aligned with tabs */}
+        <div className="flex">
+          {activeTab === "areas" && (
             <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
               <SheetTrigger asChild>
                 <Button
-                  className="bg-primary text-primary-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground"
                   onClick={() => {
                     setSelectedArea(null);
                   }}
@@ -266,15 +296,51 @@ export default function TablesPage() {
                 />
               </SheetContent>
             </Sheet>
-          </div>
+          )}
+
+          {activeTab === "tables" && (
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  className="bg-primary text-primary-foreground"
+                  onClick={() => {
+                    setSelectedTable(null);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Table
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-full sm:max-w-lg bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>
+                    {selectedTable ? "Edit Table" : "Add New Table"}
+                  </DialogTitle>
+                </DialogHeader>
+                <TableDetailModal
+                  open={isModalOpen}
+                  onOpenChange={setIsModalOpen}
+                  table={selectedTable}
+                  areas={areas}
+                  onSave={handleSaveTable}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
+
+      {/* Areas Tab */}
+      {activeTab === "areas" && (
+        <div className="space-y-4">
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {areas.map((area) => {
-                  const count = tables.filter(
-                    (table) => table.area === area.name
-                  ).length;
+                  const count = diningTablesResponse?.data.filter(
+                    (table) => table.section === area.id
+                  ).length || 0;
 
                   return (
                     <div
@@ -336,35 +402,6 @@ export default function TablesPage() {
       {/* Tables Tab */}
       {activeTab === "tables" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  className="bg-primary text-primary-foreground w-full md:w-auto"
-                  onClick={() => {
-                    setSelectedTable(null);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Table
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-full sm:max-w-lg bg-card border-border">
-                <DialogHeader>
-                  <DialogTitle>
-                    {selectedTable ? "Edit Table" : "Add New Table"}
-                  </DialogTitle>
-                </DialogHeader>
-                <TableDetailModal
-                  open={isModalOpen}
-                  onOpenChange={setIsModalOpen}
-                  table={selectedTable}
-                  areas={areas}
-                  onSave={handleSaveTable}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="pt-6">
@@ -442,9 +479,14 @@ export default function TablesPage() {
                         <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Grid3x3 className="w-5 h-5 text-primary" />
                         </div>
-                        <div>
-                          <h4 className="font-semibold">{table.tableCode}</h4>
-                          <p className="text-xs text-muted-foreground mt-0.5">{table.area}</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${table.isOccupied ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                          <div>
+                            <h4 className="font-semibold">T{table.tableCode} - {table.area}</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {table.isOccupied ? 'Occupied' : 'Available'}
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -529,7 +571,7 @@ export default function TablesPage() {
                     <SelectContent>
                       {tables.map((table) => (
                         <SelectItem key={table.id} value={table.id}>
-                          {table.tableCode} ({table.area})
+                          T{table.tableCode} - {table.area}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -667,11 +709,11 @@ export default function TablesPage() {
                 Order Items for Table {selectedTableForOrders.tableCode}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Clicked table to view all order items assigned to this table
+                Clicked table to view all order items assigned to this table. Click on quantities to edit them.
               </p>
-            </CardHeader>
-            <CardContent>
-              {isLoadingOrderItems ? (
+             </CardHeader>
+             <CardContent className="max-h-[600px] overflow-y-auto">
+               {isLoadingOrderItems ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin mr-2" />
                   <span>Loading order items...</span>
@@ -688,7 +730,7 @@ export default function TablesPage() {
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="text-foreground">Order #</TableHead>
                         <TableHead className="text-foreground">Item</TableHead>
-                        <TableHead className="text-foreground">Quantity</TableHead>
+                        <TableHead className="text-foreground">Quantity <span className="text-xs text-muted-foreground">(click to edit)</span></TableHead>
                         <TableHead className="text-foreground">Status</TableHead>
                         <TableHead className="text-foreground">Dietary Type</TableHead>
                         <TableHead className="text-foreground">Prepared At</TableHead>
@@ -701,7 +743,49 @@ export default function TablesPage() {
                           <TableCell className="text-muted-foreground">
                             {item.orderItem ? (typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem) : "Unknown Item"}
                           </TableCell>
-                          <TableCell>{item.quantity}</TableCell>
+                           <TableCell>
+                             {editingQuantity?.id === item.id ? (
+                               <div className="flex items-center gap-2">
+                                   <Input
+                                     type="number"
+                                     step="0.1"
+                                     min="0.1"
+                                     value={editingQuantity.quantity.toFixed(2)}
+                                    onChange={(e) => setEditingQuantity(prev => prev ? { ...prev, quantity: parseFloat(e.target.value) || 0.1 } : null)}
+                                    className="w-20 h-8"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleSaveQuantity();
+                                      if (e.key === 'Escape') handleCancelEdit();
+                                    }}
+                                  />
+                                 <Button size="sm" onClick={handleSaveQuantity} className="h-8 px-2">
+                                   Save
+                                 </Button>
+                                 <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-8 px-2">
+                                   Cancel
+                                 </Button>
+                               </div>
+                             ) : (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="cursor-pointer hover:underline hover:text-primary"
+                                    onClick={() => handleEditQuantity(item)}
+                                    title="Click to edit quantity"
+                                  >
+                                    {item.quantity.toFixed(2)}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleEditQuantity(item)}
+                                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+                                    title="Edit quantity"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                             )}
+                           </TableCell>
                           <TableCell>
                             <span className={`px-2 py-1 rounded-full text-xs ${
                               item.status === "preparing"

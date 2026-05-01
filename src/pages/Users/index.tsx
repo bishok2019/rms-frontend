@@ -163,7 +163,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Users Management</h1>
         <Dialog open={open} onOpenChange={setOpen}>

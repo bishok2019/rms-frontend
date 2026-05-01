@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { Trash2, Edit2, Plus } from "lucide-react";
+
+import { Trash2, Edit2, Plus, Edit } from "lucide-react";
 import { errorFunction } from "@/components/common/Alert";
 import { useCategories, useCreateMenuItem, useMenuItems, useUpdateMenuItem } from "../Store/MenuStores";
 import { useKitchens } from "../../Kitchen/Store/KitchenStores";
@@ -141,7 +142,7 @@ export default function MenuSetup() {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
@@ -178,11 +179,11 @@ export default function MenuSetup() {
             </Dialog>
           </div>
 
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground mb-4">
-                Double-click any category card to open Menu Items filtered by that category.
-              </p>
+           <Card className="bg-card border-border overflow-hidden">
+             <CardContent className="max-h-[600px] overflow-y-auto pt-6">
+               <p className="text-sm text-muted-foreground mb-4">
+                 Double-click any category card to open Menu Items filtered by that category.
+               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {categories.map((category) => {
                   const count = category.totalMenuItems || 0;
@@ -207,22 +208,21 @@ export default function MenuSetup() {
                             size="sm"
                             onClick={() => handleEditCategory(category)}
                             className="text-muted-foreground hover:text-foreground"
+
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteCategory(category.id)}
-                            className="text-destructive hover:text-destructive"
+                            className="text-muted-foreground hover:text-destructive"
+
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-3 line-clamp-3 min-h-14">
-                        {category.description || "No description"}
-                      </p>
                     </div>
                   );
                 })}
@@ -263,68 +263,7 @@ export default function MenuSetup() {
           </div>
 
           <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                <Input
-                  value={itemSearch}
-                  onChange={(e) => setItemSearch(e.target.value)}
-                  placeholder="Search by item name or description"
-                  className="md:col-span-2 lg:col-span-2"
-                />
-                <select
-                  value={itemCategoryFilter}
-                  onChange={(e) => setItemCategoryFilter(e.target.value)}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.name}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={itemKitchenFilter}
-                  onChange={(e) => setItemKitchenFilter(e.target.value)}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="all">All Kitchens</option>
-                  {kitchens.map((kitchen) => (
-                    <option key={kitchen.id} value={kitchen.name}>
-                      {kitchen.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={itemAvailabilityFilter}
-                  onChange={(e) => setItemAvailabilityFilter(e.target.value)}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="all">All Availability</option>
-                  <option value="available">Available</option>
-                  <option value="unavailable">Unavailable</option>
-                </select>
-                <select
-                  value={itemVariantFilter}
-                  onChange={(e) => setItemVariantFilter(e.target.value)}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                >
-                  <option value="all">All Types</option>
-                  <option value="regular">Regular Items</option>
-                  <option value="variants">Variants</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Menu Items</h3>
-                <p className="text-sm text-muted-foreground">
-                  Showing {filteredMenuItems.length} item{filteredMenuItems.length === 1 ? "" : "s"}
-                </p>
-              </div>
+            <CardContent className="max-h-[600px] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredMenuItems.map((item) => {
                   return (
@@ -361,7 +300,7 @@ export default function MenuSetup() {
                             onClick={() => handleEditItem(item)}
                             className={`hover:bg-white/20 ${item.photo ? 'text-white hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -369,7 +308,7 @@ export default function MenuSetup() {
                             onClick={() => handleDeleteItem(item.id)}
                             className={`hover:bg-white/20 ${item.photo ? 'text-white hover:text-white' : 'text-destructive hover:text-destructive'}`}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>

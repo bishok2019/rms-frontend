@@ -69,7 +69,7 @@ export const register = (body: RegisterType) =>
 export const forgotPassword = (body: {
   email: string;
   code: string;
-}) => publicApiInstance.post(`auth-app/forget-password`, { json: body }).json();
+}) => publicApiInstance.post(`auth-app/forget-password`, { json: body }).json<ApiResponse<unknown>>();
 
 export const resetPassword = (body: {
   otp: string;
@@ -82,7 +82,7 @@ export const resetPassword = (body: {
         new_password: body.newPassword,
       },
     })
-    .json();
+    .json<ApiResponse<unknown>>();
 
 export interface UserProfileResponse {
   id?: number;
@@ -136,7 +136,7 @@ export const changePassword = (body: {
 }) =>
   publicApiInstance
     .post(`auth-app/change-password-otp`, { json: body })
-    .json();
+    .json<ApiResponse<unknown>>();
 
 export interface User {
   id: number;

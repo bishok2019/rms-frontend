@@ -23,9 +23,17 @@ export const createKitchen = (body: unknown) =>
     .post("core-app/kitchen/create", { json: body })
     .json<ApiResponse<Kitchen>>();
 
-export const getKitchens = async () => {
+export const getKitchens = async (params?: {
+  category?: number | string;
+  search?: string;
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params?.category) searchParams.append("category", params.category.toString());
+  if (params?.search) searchParams.append("search", params.search);
+  const queryString = searchParams.toString();
+
   const response = await privateApiInstance
-    .get("core-app/kitchen/list")
+    .get(`core-app/kitchen/list${queryString ? `?${queryString}` : ""}`)
     .json<PaginatedApiResponse<Kitchen>>();
   return response;
 };

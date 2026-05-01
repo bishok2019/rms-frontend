@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { PaginatedApiResponse, ApiResponse } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ export default function ApiLogsPage() {
         ),
       });
       const response = await privateApiInstance.get(`api-logs-app/list?${params}`);
-      const data = await response.json();
+      const data = await response.json() as PaginatedApiResponse<unknown>;
       console.log("API response:", data);
       setLogs(data.data || []);
       setPage(pageNum);
@@ -87,7 +88,7 @@ export default function ApiLogsPage() {
   const retrieveLog = async (id: number) => {
     try {
       const response = await privateApiInstance.get(`api-logs-app/retrieve/${id}`);
-      const data = await response.json();
+      const data = await response.json() as ApiResponse<unknown>;
       console.log("Retrieve response:", data);
       setLogDetails(JSON.stringify(data.data || data, null, 2));
       setSelectedLog(logs.find(log => log.id === id) || null);
@@ -107,7 +108,7 @@ export default function ApiLogsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">API Logs</h1>
@@ -119,7 +120,7 @@ export default function ApiLogsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Logs</CardTitle>
+          {/* <CardTitle>Logs</CardTitle> */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Input
               placeholder="Search logs..."
@@ -155,7 +156,7 @@ export default function ApiLogsPage() {
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="max-h-[600px] overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>

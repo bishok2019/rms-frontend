@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Loader2, Plus, Edit } from "lucide-react";
 import { privateApiInstance } from "@/Utils/ky";
+import type { PaginatedApiResponse } from "@/types/api";
 import { useKitchens } from "@/pages/Setup/Pages/Kitchen/Store/KitchenStores";
 
 interface Employee {
@@ -44,7 +45,7 @@ export default function EmployeesPage() {
     setLoading(true);
     try {
       const response = await privateApiInstance.get("core-app/employee/list");
-      const data = await response.json();
+      const data = await response.json() as PaginatedApiResponse<unknown>;
       setEmployees(data.data || data.results || data || []);
     } catch (error) {
       console.error("Failed to fetch employees:", error);

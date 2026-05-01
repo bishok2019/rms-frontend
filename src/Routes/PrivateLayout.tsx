@@ -44,7 +44,7 @@ export default function PrivateLayout() {
       <Sidebar />
       <main
         className={cn(
-          "min-h-[calc(100vh_-_32px)] transition-[margin-left] ease-in-out duration-300 relative",
+          "flex-1 overflow-hidden transition-[margin-left] ease-in-out duration-300 relative flex flex-col min-h-0",
           bgImagesEnabled ? "bg-transparent" : "bg-background",
           !settings.disabled && getOpenState() && "lg:ml-72"
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,8 @@ import {
   useUpdateKitchen,
 } from "./Store/KitchenStores";
 import { ordersApi } from "@/services/orders";
-import type { KitchenCategory, Kitchen, OrderItem } from "@/types/api";
+import { privateApiInstance } from "@/Utils/ky";
+import type { PaginatedApiResponse, Kitchen, KitchenCategory, OrderItem } from "@/types/api";
 
 export default function KitchenPage() {
   const [activeTab, setActiveTab] = useState<"categories" | "kitchens" | "order-items">("categories");
@@ -46,6 +47,7 @@ export default function KitchenPage() {
   const [isKitchenDialogOpen, setIsKitchenDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<KitchenCategory | null>(null);
   const [editingKitchen, setEditingKitchen] = useState<Kitchen | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<KitchenCategory | null>(null);
   const [selectedKitchen, setSelectedKitchen] = useState<Kitchen | null>(null);
   const [kitchenOrderItems, setKitchenOrderItems] = useState<OrderItem[]>([]);
   const [isLoadingOrderItems, setIsLoadingOrderItems] = useState(false);
@@ -54,6 +56,7 @@ export default function KitchenPage() {
     status: "all",
     dietaryType: "all",
   });
+  const [allKitchensList, setAllKitchensList] = useState<Kitchen[]>([]);
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -69,21 +72,59 @@ export default function KitchenPage() {
     maxCapacity: "",
   });
 
-  const { data: categoriesData } = useKitchenCategories(activeTab === "categories");
-  const { data: kitchensData } = useKitchens(activeTab === "kitchens");
+  const { data: categoriesData } = useKitchenCategories(activeTab === "categories" || activeTab === "kitchens");
+  const { data: kitchensData } = useKitchens(
+    activeTab === "kitchens",
+    selectedCategoryFilter ? { category: selectedCategoryFilter.id } : undefined
+  );
   const { mutateAsync: createCategory } = useCreateKitchenCategory();
   const { mutateAsync: updateCategory } = useUpdateKitchenCategory();
   const { mutateAsync: createKitchen } = useCreateKitchen();
   const { mutateAsync: updateKitchen } = useUpdateKitchen();
 
   const categories = categoriesData?.data ?? [];
-  const kitchens = kitchensData?.data ?? [];
+  const kitchens = (kitchensData?.data ?? []).filter((kitchen) => {
+    if (!selectedCategoryFilter) {
+      return true;
+    }
+
+    if (typeof kitchen.category === "object") {
+      return kitchen.category.id === selectedCategoryFilter.id;
+    }
+
+    return (
+      kitchen.category?.toString() === selectedCategoryFilter.id.toString() ||
+      kitchen.category?.toString().toLowerCase() === selectedCategoryFilter.name.toLowerCase()
+    );
+  });
 
   useEffect(() => {
     if (selectedKitchen) {
       setFilters(prev => ({ ...prev, kitchenId: selectedKitchen.id.toString() }));
     }
   }, [selectedKitchen]);
+
+  useEffect(() => {
+    const fetchKitchens = async () => {
+      try {
+        const response = await privateApiInstance.get("core-app/kitchen/list").json() as PaginatedApiResponse<Kitchen>;
+        setAllKitchensList(response.data || []);
+      } catch (error) {
+        console.error("Error fetching kitchens:", error);
+        setAllKitchensList([]);
+      }
+    };
+    fetchKitchens();
+  }, []);
+
+  useEffect(() => {
+    if (filters.kitchenId) {
+      const kitchen = allKitchensList.find(k => k.id.toString() === filters.kitchenId);
+      setSelectedKitchen(kitchen || null);
+    } else {
+      setSelectedKitchen(null);
+    }
+  }, [filters.kitchenId, allKitchensList]);
 
   const handleCategorySubmit = async () => {
     const data = {
@@ -155,6 +196,11 @@ export default function KitchenPage() {
     setIsCategoryDialogOpen(true);
   };
 
+  const handleCategoryDoubleClick = (category: KitchenCategory) => {
+    setSelectedCategoryFilter(category);
+    setActiveTab("kitchens");
+  };
+
   const handleEditKitchen = (kitchen: Kitchen) => {
     setKitchenForm({
       category: typeof kitchen.category === 'object' ? kitchen.category.id.toString() : kitchen.category.toString(),
@@ -168,19 +214,36 @@ export default function KitchenPage() {
 
   const handleKitchenDoubleClick = async (kitchen: Kitchen) => {
     setSelectedKitchen(kitchen);
+    setFilters(prev => ({ ...prev, kitchenId: kitchen.id.toString() }));
     setActiveTab("order-items");
-    await fetchKitchenOrderItems(kitchen.id);
+    await fetchKitchenOrderItems();
   };
 
-  const fetchKitchenOrderItems = async (kitchenId: number) => {
+  const fetchKitchenOrderItems = useCallback(async () => {
+    if (!filters.kitchenId) {
+      setKitchenOrderItems([]);
+      setIsLoadingOrderItems(false);
+      return;
+    }
+
     try {
       setIsLoadingOrderItems(true);
-      const response = await ordersApi.getOrderItemsList({
-        order_item__kitchen: kitchenId,
+      const params: { [key: string]: any } = {
+        order_item__kitchen: parseInt(filters.kitchenId),
         page_size: 100,
-      });
+      };
 
-      if (response.success && response.data) {
+      if (filters.status !== "all") {
+        params.status = filters.status;
+      }
+
+      if (filters.dietaryType !== "all") {
+        params.dietary_type = filters.dietaryType;
+      }
+
+      const response = await ordersApi.getOrderItemsList(params);
+
+      if (response.data) {
         setKitchenOrderItems(response.data);
       } else {
         setKitchenOrderItems([]);
@@ -191,57 +254,61 @@ export default function KitchenPage() {
     } finally {
       setIsLoadingOrderItems(false);
     }
-  };
+  }, [filters]);
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Kitchen Management</h1>
       </div>
 
-      <div className="flex gap-2 border-b border-border">
-        <button
-          onClick={() => setActiveTab("categories")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "categories"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Categories
-        </button>
-        <button
-          onClick={() => setActiveTab("kitchens")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "kitchens"
-              ? "border-b-2 border-primary text-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Kitchens
-        </button>
-        {selectedKitchen && (
+      <div className="flex gap-2 border-b border-border justify-between items-center">
+        <div className="flex gap-2">
           <button
-            onClick={() => setActiveTab("order-items")}
+            onClick={() => setActiveTab("categories")}
             className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "order-items"
+              activeTab === "categories"
                 ? "border-b-2 border-primary text-primary"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <ChefHat className="w-4 h-4 mr-1 inline" />
-            {selectedKitchen.name} Orders
+            Categories
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => {
+              setSelectedCategoryFilter(null);
+              setActiveTab("kitchens");
+            }}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "kitchens"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Kitchens
+          </button>
+          {selectedKitchen && (
+            <button
+              onClick={() => setActiveTab("order-items")}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === "order-items"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ChefHat className="w-4 h-4 mr-1 inline" />
+              {selectedKitchen.name} Orders
+            </button>
+          )}
+        </div>
 
-      {activeTab === "categories" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
+        {/* Add button aligned with tabs */}
+        <div className="flex">
+          {activeTab === "categories" && (
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-primary text-primary-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground"
                   onClick={resetCategoryForm}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -274,14 +341,24 @@ export default function KitchenPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="displayOrder">Display Order</Label>
+                    <Label htmlFor="categoryDisplayOrder">Display Order</Label>
                     <Input
-                      id="displayOrder"
+                      id="categoryDisplayOrder"
                       type="number"
                       value={categoryForm.displayOrder}
                       onChange={(e) => setCategoryForm(prev => ({ ...prev, displayOrder: parseInt(e.target.value) || 0 }))}
                       className="bg-background text-foreground border-border"
                     />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="categoryIsActive"
+                      checked={categoryForm.isActive}
+                      onChange={(e) => setCategoryForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                      className="rounded"
+                    />
+                    <Label htmlFor="categoryIsActive">Active</Label>
                   </div>
                   <Button
                     onClick={handleCategorySubmit}
@@ -292,68 +369,13 @@ export default function KitchenPage() {
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
+          )}
 
-          <Card className="bg-card border-border overflow-hidden">
-            <CardHeader>
-              <CardTitle>Kitchen Categories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-foreground">Name</TableHead>
-                      <TableHead className="text-foreground">Description</TableHead>
-                      <TableHead className="text-foreground">Order</TableHead>
-                      <TableHead className="text-foreground">Status</TableHead>
-                      <TableHead className="text-foreground text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories.map((category) => (
-                      <TableRow key={category.id} className="border-border hover:bg-secondary/50">
-                        <TableCell className="font-medium">{category.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{category.description}</TableCell>
-                        <TableCell>{category.displayOrder}</TableCell>
-                        <TableCell>
-                          <span className={`px-3 py-1 rounded-full text-sm ${
-                            category.isActive
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                          }`}>
-                            {category.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditCategory(category)}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === "kitchens" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
+          {activeTab === "kitchens" && (
             <Dialog open={isKitchenDialogOpen} onOpenChange={setIsKitchenDialogOpen}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-primary text-primary-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground"
                   onClick={resetKitchenForm}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -404,9 +426,9 @@ export default function KitchenPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxCapacity">Max Capacity (Optional)</Label>
+                    <Label htmlFor="kitchenMaxCapacity">Max Capacity</Label>
                     <Input
-                      id="maxCapacity"
+                      id="kitchenMaxCapacity"
                       type="number"
                       value={kitchenForm.maxCapacity}
                       onChange={(e) => setKitchenForm(prev => ({ ...prev, maxCapacity: e.target.value }))}
@@ -415,240 +437,257 @@ export default function KitchenPage() {
                   </div>
                   <Button
                     onClick={handleKitchenSubmit}
-                   className="w-full"
+                    className="w-full"
                   >
                     {editingKitchen ? "Update" : "Create"} Kitchen
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
+          )}
+        </div>
+      </div>
 
-          <Card className="bg-card border-border overflow-hidden">
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "categories" && (
+          <Card>
             <CardHeader>
-              <CardTitle>Kitchens</CardTitle>
+              <CardTitle>Kitchen Categories</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-foreground">Name</TableHead>
-                      <TableHead className="text-foreground">Category</TableHead>
-                      <TableHead className="text-foreground">Location</TableHead>
-                      <TableHead className="text-foreground">Max Capacity</TableHead>
-                      <TableHead className="text-foreground text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {kitchens.map((kitchen) => (
-                      <TableRow
-                        key={kitchen.id}
-                        className="border-border hover:bg-secondary/50 cursor-pointer"
-                        onDoubleClick={() => handleKitchenDoubleClick(kitchen)}
-                        title="Double-click to view order items"
-                      >
-                        <TableCell className="font-medium">{kitchen.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {typeof kitchen.category === 'object' ? kitchen.category.name : kitchen.category || 'No Category'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{kitchen.location}</TableCell>
-                        <TableCell>{kitchen.maxCapacity || 'N/A'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditKitchen(kitchen);
-                              }}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            <CardContent className="max-h-[600px] overflow-y-auto">
+              <div className="mb-3 text-sm text-muted-foreground">
+                Double-click a category to view kitchens in that category
               </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Display Order</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categories.map((category) => (
+                    <TableRow
+                      key={category.id}
+                      onDoubleClick={() => handleCategoryDoubleClick(category)}
+                      className="cursor-pointer hover:bg-muted"
+                    >
+                      <TableCell>{category.name}</TableCell>
+                      <TableCell>{category.description}</TableCell>
+                      <TableCell>{category.displayOrder}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          category.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}>
+                          {category.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleEditCategory(category);
+                          }}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
-        </div>
-      )}
+        )}
 
-      {activeTab === "order-items" && selectedKitchen && (
-        <div className="space-y-4">
-          <Card className="bg-card border-border">
+        {activeTab === "kitchens" && (
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ChefHat className="h-5 w-5" />
-                Kitchen Wise Filter
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="kitchenFilter">Kitchen</Label>
-                  <Select
-                    value={filters.kitchenId}
-                    onValueChange={async (value) => {
-                      setFilters(prev => ({ ...prev, kitchenId: value }));
-                      const kitchen = kitchens.find(k => k.id.toString() === value);
-                      if (kitchen) {
-                        setSelectedKitchen(kitchen);
-                        await fetchKitchenOrderItems(kitchen.id);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Select Kitchen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {kitchens.map((kitchen) => (
-                        <SelectItem key={kitchen.id} value={kitchen.id.toString()}>
-                          {kitchen.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="statusFilter">Status</Label>
-                  <Select
-                    value={filters.status}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="preparing">Preparing</SelectItem>
-                      <SelectItem value="ready">Ready</SelectItem>
-                      <SelectItem value="served">Served</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dietaryFilter">Dietary Type</Label>
-                  <Select
-                    value={filters.dietaryType}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, dietaryType: value }))}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="veg">🥬 Veg</SelectItem>
-                      <SelectItem value="non_veg">🍖 Non-Veg</SelectItem>
-                      <SelectItem value="vegan">🌱 Vegan</SelectItem>
-                      <SelectItem value="gluten_free">🌾 Gluten-Free</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
+              <CardTitle className="flex items-center justify-between gap-3">
+                <span>
+                  {selectedCategoryFilter
+                    ? `${selectedCategoryFilter.name} Kitchens`
+                    : "Kitchens"}
+                </span>
+                {selectedCategoryFilter && (
                   <Button
                     variant="outline"
-                    onClick={() => setFilters(prev => ({ ...prev, status: "all", dietaryType: "all" }))}
-                    className="text-muted-foreground"
+                    size="sm"
+                    onClick={() => setSelectedCategoryFilter(null)}
                   >
-                    Clear Filters
+                    Clear Filter
                   </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-[600px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Max Capacity</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kitchens.map((kitchen) => (
+                    <TableRow
+                      key={kitchen.id}
+                      onDoubleClick={() => handleKitchenDoubleClick(kitchen)}
+                      className="cursor-pointer hover:bg-muted"
+                    >
+                      <TableCell>{kitchen.name}</TableCell>
+                      <TableCell>
+                        {typeof kitchen.category === 'object'
+                          ? kitchen.category.name
+                          : kitchen.category || 'N/A'}
+                      </TableCell>
+                      <TableCell>{kitchen.location}</TableCell>
+                      <TableCell>{kitchen.maxCapacity || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditKitchen(kitchen)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {kitchens.length > 0 && (
+                <div className="mt-4 text-sm text-muted-foreground">
+                  Double-click a kitchen to view its orders
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
+        )}
 
-          <Card className="bg-card border-border overflow-hidden">
+        {activeTab === "order-items" && (
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ChefHat className="h-5 w-5" />
-                Order Items for {selectedKitchen.name}
+              <CardTitle>
+                {selectedKitchen ? `${selectedKitchen.name} Orders` : "Order Items"}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Double-clicked kitchen to view all order items assigned to this kitchen
-              </p>
+              {selectedKitchen && (
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="statusFilter">Status:</Label>
+                    <select
+                      id="statusFilter"
+                      value={filters.status}
+                      onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                      className="h-8 rounded border border-border bg-background px-2 text-sm"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="preparing">Preparing</option>
+                      <option value="ready">Ready</option>
+                      <option value="served">Served</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                   <div className="flex items-center gap-2">
+                     <Label htmlFor="dietaryFilter">Dietary Type:</Label>
+                     <select
+                       id="dietaryFilter"
+                       value={filters.dietaryType}
+                       onChange={(e) => setFilters(prev => ({ ...prev, dietaryType: e.target.value }))}
+                       className="h-8 rounded border border-border bg-background px-2 text-sm"
+                     >
+                       <option value="all">All Types</option>
+                       <option value="vegetarian">Vegetarian</option>
+                       <option value="non-vegetarian">Non-Vegetarian</option>
+                       <option value="vegan">Vegan</option>
+                     </select>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <Label htmlFor="kitchenFilter">Kitchen:</Label>
+                     <select
+                       id="kitchenFilter"
+                       value={filters.kitchenId}
+                       onChange={(e) => setFilters(prev => ({ ...prev, kitchenId: e.target.value }))}
+                       className="h-8 rounded border border-border bg-background px-2 text-sm"
+                     >
+                       <option value="">All Kitchens</option>
+                      {allKitchensList.map((kitchen) => (
+                        <option key={kitchen.id} value={kitchen.id.toString()}>{kitchen.name}</option>
+                      ))}
+                     </select>
+                   </div>
+                </div>
+              )}
             </CardHeader>
-            <CardContent>
-              {(() => {
-                const filteredItems = kitchenOrderItems.filter(item => {
-                  if (filters.status !== "all" && item.status !== filters.status) return false;
-                  if (filters.dietaryType !== "all" && item.dietaryType !== filters.dietaryType) return false;
-                  return true;
-                });
-
-                return isLoadingOrderItems ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span>Loading order items...</span>
+            <CardContent className="max-h-[600px] overflow-y-auto">
+              {isLoadingOrderItems ? (
+                <div className="flex justify-center items-center h-32">
+                  <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ChefHat className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>{kitchenOrderItems.length === 0 ? "No order items found for this kitchen" : "No items match the current filters"}</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
+              ) : selectedKitchen ? (
+                kitchenOrderItems.length > 0 ? (
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="text-foreground">Order #</TableHead>
-                        <TableHead className="text-foreground">Item</TableHead>
-                        <TableHead className="text-foreground">Quantity</TableHead>
-                        <TableHead className="text-foreground">Status</TableHead>
-                        <TableHead className="text-foreground">Dietary Type</TableHead>
-                        <TableHead className="text-foreground">Table</TableHead>
-                        <TableHead className="text-foreground">Prepared At</TableHead>
+                      <TableRow>
+                        <TableHead>Order #</TableHead>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Dietary Type</TableHead>
+                        <TableHead>Spice Level</TableHead>
+                        <TableHead>Notes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredItems.map((item) => (
-                        <TableRow key={item.id} className="border-border hover:bg-secondary/50">
-                          <TableCell className="font-medium">#{item.order}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.orderItem ? (typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem) : "Unknown Item"}
-                          </TableCell>
+                      {kitchenOrderItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>#{item.order}</TableCell>
+                          <TableCell>{item.menu_item?.name || 'N/A'}</TableCell>
                           <TableCell>{item.quantity}</TableCell>
                           <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              item.status === "preparing"
-                                ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                                : item.status === "ready"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                : item.status === "served"
-                                ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                                : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              item.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                              item.status === 'ready' ? 'bg-green-100 text-green-800' :
+                              item.status === 'served' ? 'bg-gray-100 text-gray-800' :
+                              'bg-red-100 text-red-800'
                             }`}>
-                              {item.status}
+                              {item.status || 'Unknown'}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.dietaryType === "veg" && "🥬 Veg"}
-                            {item.dietaryType === "non_veg" && "🍖 Non-Veg"}
-                            {item.dietaryType === "vegan" && "🌱 Vegan"}
-                            {item.dietaryType === "gluten_free" && "🌾 Gluten-Free"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.tableNumber || "N/A"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.preparedAt ? new Date(item.preparedAt).toLocaleString() : "Not started"}
-                          </TableCell>
+                          <TableCell>{item.dietary_type || 'N/A'}</TableCell>
+                          <TableCell>{item.spice_level || 'N/A'}</TableCell>
+                          <TableCell>{item.special_instructions || 'N/A'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No order items found for this kitchen
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Select a kitchen to view its orders
                 </div>
-              );
-              })()}
+              )}
             </CardContent>
           </Card>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

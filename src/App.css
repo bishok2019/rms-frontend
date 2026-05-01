@@ -129,8 +129,9 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    height: 100vh;
   }
   ::-webkit-scrollbar{
     width: 4px;
@@ -141,5 +142,83 @@
   ::-webkit-scrollbar-thumb{
     background-color: var(--color-border);
     border-radius: 4px;
+  }
+
+  /* Hide number input spinner arrows */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Enhanced hover effects for better distinguishability */
+  button:hover {
+    filter: brightness(1.1);
+    transition: filter 0.15s ease;
+  }
+
+  .dark button:hover {
+    filter: brightness(1.2);
+  }
+
+  /* Card hover effects */
+  [class*="card"]:hover,
+  .card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .dark [class*="card"]:hover,
+  .dark .card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Interactive elements hover */
+  [role="button"]:hover,
+  [class*="cursor-pointer"]:hover,
+  .cursor-pointer:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    transition: background-color 0.15s ease;
+  }
+
+  .dark [role="button"]:hover,
+  .dark [class*="cursor-pointer"]:hover,
+  .dark .cursor-pointer:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Table row hover effects */
+  tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    transition: background-color 0.15s ease;
+  }
+
+  .dark tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Input focus and hover */
+  input:hover,
+  textarea:hover,
+  select:hover {
+    border-color: var(--ring);
+    transition: border-color 0.15s ease;
+  }
+
+  /* Menu item hover effects */
+  [class*="menu"]:hover,
+  .menu-item:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+    transition: background-color 0.15s ease;
+  }
+
+  .dark [class*="menu"]:hover,
+  .dark .menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
   }
 }

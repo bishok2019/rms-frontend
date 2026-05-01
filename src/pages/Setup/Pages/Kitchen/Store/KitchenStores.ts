@@ -18,7 +18,8 @@ export const kitchenCategoryQueryKeys = {
 
 export const kitchenQueryKeys = {
   all: ["kitchen"] as const,
-  list: () => [...kitchenQueryKeys.all, "list"] as const,
+  list: (params?: { category?: number | string; search?: string }) =>
+    [...kitchenQueryKeys.all, "list", params] as const,
   detail: (id: number) => [...kitchenQueryKeys.all, "detail", id] as const,
 };
 
@@ -94,10 +95,13 @@ export const useUpdateKitchen = () => {
   });
 };
 
-export const useKitchens = (enabled: boolean = true) => {
+export const useKitchens = (
+  enabled: boolean = true,
+  params?: { category?: number | string; search?: string }
+) => {
   return useQuery({
-    queryKey: kitchenQueryKeys.list(),
-    queryFn: getKitchens,
+    queryKey: kitchenQueryKeys.list(params),
+    queryFn: () => getKitchens(params),
     enabled,
   });
 };

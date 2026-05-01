@@ -72,7 +72,10 @@ This document outlines the current state of API integrations in the Restaurant P
 
 ### Kitchen Management
 - ✅ Double-click kitchen in list to view order items for that kitchen
-- ✅ Kitchen-wise filter with status, dietary type, and other criteria
+- ✅ Kitchen-wise filter with status, dietary type, and kitchen selection
+- ✅ Direct API integration for kitchen list fetching
+- ✅ Advanced order items filtering with real-time API calls
+- ✅ TypeScript type safety improvements and error fixes
 
 ### Table Management
 - ✅ Click on table cards to view order items for that table
@@ -148,6 +151,16 @@ This document outlines the current state of API integrations in the Restaurant P
 - ✅ Tailwind CSS for responsive styling
 - ✅ Accessibility features and semantic HTML
 - ✅ Error boundaries and loading states
+
+## Recent Updates (2026-05-01)
+
+### Kitchen Page Enhancements
+- ✅ Implemented direct API call for kitchen list population in filter dropdown
+- ✅ Added comprehensive filtering for order items (status, dietary type, kitchen)
+- ✅ Fixed TypeScript errors for unknown response types across multiple files
+- ✅ Resolved duplicate identifier issues in type imports
+- ✅ Enhanced order fetching with proper parameter handling and real-time updates
+- ✅ Improved UI state management for kitchen selection and filtering
 
 ## Notes
 - Some retrieve endpoints may not be immediately needed if list views provide sufficient data

@@ -103,7 +103,7 @@ export interface KitchenCategory {
 
 export interface Kitchen {
   id: number;
-  category: number | KitchenCategory; // Can be id or full object
+  category: number | string | KitchenCategory; // Can be id, name, or full object
   name: string;
   location: string;
   maxCapacity: number | null;
@@ -138,15 +138,19 @@ export interface OrderItem {
   orderType: OrderType;
   order: number;
   orderItem: number | string | NamedRelation | null;
+  menu_item?: NamedRelation | null;
   quantity: number;
   dietaryType: DietaryType;
+  dietary_type?: string;
   spiceLevel: SpiceLevel;
+  spice_level?: string;
   servingSize: string;
   status: OrderItemStatus;
   preparedAt: string | null;
   readyAt: string | null;
   servedAt: string | null;
   note: string | null;
+  special_instructions: string | null;
   tableNumber?: string | null;
 }
 
