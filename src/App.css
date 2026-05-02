@@ -140,7 +140,7 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb{
-    background-color: var(--color-background);
+    background-color: var(--color-border);
     border-radius: 4px;
   }
 
