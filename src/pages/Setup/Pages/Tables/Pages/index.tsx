@@ -547,19 +547,24 @@ export default function TablesPage() {
       {/* Order Items Tab */}
       {activeTab === "order-items" && (
         <div className="space-y-4">
-          <Card className="bg-card border-border">
+          <Card className="bg-card border-none">
 
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tableFilter">Table</Label>
                   <Select
-                    value={selectedTableForOrders?.id || ""}
+                    value={selectedTableForOrders ? selectedTableForOrders.id : "all"}
                     onValueChange={(value) => {
-                      const table = tables.find(t => t.id === value);
-                      if (table) {
-                        setSelectedTableForOrders(table);
-                        fetchTableOrderItems(table.id);
+                      if (value === "all") {
+                        setSelectedTableForOrders(null);
+                        fetchTableOrderItems();
+                      } else {
+                        const table = tables.find(t => t.id === value);
+                        if (table) {
+                          setSelectedTableForOrders(table);
+                          fetchTableOrderItems(table.id);
+                        }
                       }
                     }}
                   >
@@ -567,6 +572,7 @@ export default function TablesPage() {
                       <SelectValue placeholder="Select Table" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All Tables</SelectItem>
                       {tables.map((table) => (
                         <SelectItem key={table.id} value={table.id}>
                           T{table.tableCode} - {table.area}
@@ -702,7 +708,7 @@ export default function TablesPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border overflow-hidden">
+          <Card className="bg-card border-none overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChefHat className="h-5 w-5" />
