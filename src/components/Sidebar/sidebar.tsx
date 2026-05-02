@@ -48,7 +48,7 @@ export function Sidebar() {
           "relative h-full flex flex-col px-3 py-4 overflow-y-auto shadow-lg dark:shadow-black/60 border-r scrollbar-hidden",
           bgImagesEnabled
             ? "bg-white/85 dark:bg-zinc-950/82 backdrop-blur-md border-white/40 dark:border-zinc-800/70"
-            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+            : "bg-background border-border"
         )}
       >
         <Button

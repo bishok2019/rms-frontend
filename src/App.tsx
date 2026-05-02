@@ -32,7 +32,7 @@ function App() {
   );
   const [bgImagesEnabled, setBgImagesEnabled] = useState<boolean>(() => {
     const stored = localStorage.getItem("restaurant-bg-images-enabled");
-    if (stored === null) return true;
+    if (stored === null) return false;
     return stored === "true";
   });
 
