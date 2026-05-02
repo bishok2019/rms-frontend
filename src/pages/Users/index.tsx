@@ -340,13 +340,11 @@ export default function UsersPage() {
       </Card>
 
       <Card className="bg-card border-border overflow-hidden">
-        <CardHeader>
-          <CardTitle>Users List</CardTitle>
-        </CardHeader>
+
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-96">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="text-foreground">Username</TableHead>
                   <TableHead className="text-foreground hidden md:table-cell">
@@ -390,7 +388,7 @@ export default function UsersPage() {
                   users.map((user) => (
                     <TableRow
                       key={user.id}
-                      className="border-border hover:bg-secondary/50"
+                      className="border-border"
                     >
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
