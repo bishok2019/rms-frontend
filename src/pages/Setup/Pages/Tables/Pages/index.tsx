@@ -733,7 +733,7 @@ export default function TablesPage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
+                      <TableRow className="hover:bg-transparent">
                         <TableHead className="text-foreground">Order #</TableHead>
                         <TableHead className="text-foreground">Item</TableHead>
                         <TableHead className="text-foreground">Quantity <span className="text-xs text-muted-foreground">(click to edit)</span></TableHead>
@@ -744,7 +744,7 @@ export default function TablesPage() {
                     </TableHeader>
                     <TableBody>
                       {tableOrderItems.map((item) => (
-                        <TableRow key={item.id} className="border-border hover:bg-secondary/50">
+                        <TableRow key={item.id} className="hover:bg-secondary/50">
                           <TableCell className="font-medium">#{item.order}</TableCell>
                           <TableCell className="text-muted-foreground">
                             {item.orderItem ? (typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem) : "Unknown Item"}
