@@ -166,13 +166,16 @@ export default function TablesPage() {
     setEditingQuantity(null);
   };
 
-  const fetchTableOrderItems = async (tableNumber: string) => {
+  const fetchTableOrderItems = async (tableNumber?: string) => {
     try {
       setIsLoadingOrderItems(true);
       const params: Parameters<typeof ordersApi.getOrderItemsList>[0] = {
-        order__dining_table: tableNumber,
         page_size: 100,
       };
+
+      if (tableNumber) {
+        params.order__dining_table = tableNumber;
+      }
 
       // Add filters
       if (orderItemFilters.status !== "all") params.status = orderItemFilters.status;
@@ -542,17 +545,12 @@ export default function TablesPage() {
       )}
 
       {/* Order Items Tab */}
-      {activeTab === "order-items" && selectedTableForOrders && (
+      {activeTab === "order-items" && (
         <div className="space-y-4">
           <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ChefHat className="h-5 w-5" />
-                Table Order Items Filter
-              </CardTitle>
-            </CardHeader>
+
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tableFilter">Table</Label>
                   <Select
@@ -680,24 +678,26 @@ export default function TablesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="flex justify-end mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setOrderItemFilters({
-                      status: "all",
-                      dietaryType: "all",
-                      spiceLevel: "all",
-                      orderType: "all",
-                      servingSize: "all",
-                    });
-                    fetchTableOrderItems(selectedTableForOrders.tableCode);
-                  }}
-                  className="text-muted-foreground"
-                >
-                  Clear All Filters
-                </Button>
+                <div className="space-y-2">
+                  <Label>Actions</Label>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedTableForOrders(null);
+                      setOrderItemFilters({
+                        status: "all",
+                        dietaryType: "all",
+                        spiceLevel: "all",
+                        orderType: "all",
+                        servingSize: "all",
+                      });
+                      fetchTableOrderItems();
+                    }}
+                    className="text-muted-foreground w-full"
+                  >
+                    Clear All Filters
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -706,7 +706,7 @@ export default function TablesPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ChefHat className="h-5 w-5" />
-                Order Items for Table {selectedTableForOrders.tableCode}
+                {selectedTableForOrders ? `Order Items for Table ${selectedTableForOrders.tableCode}` : "All Order Items"}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Clicked table to view all order items assigned to this table. Click on quantities to edit them.
@@ -772,7 +772,7 @@ export default function TablesPage() {
                                     onClick={() => handleEditQuantity(item)}
                                     title="Click to edit quantity"
                                   >
-                                    {item.quantity.toFixed(2)}
+                                    {(Number(item.quantity) || 0).toFixed(2)}
                                   </span>
                                   <Button
                                     size="sm"

@@ -76,14 +76,14 @@ export const ordersApi = {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
-    if (params?.status) searchParams.append("status", params.status);
-    if (params?.order) searchParams.append("order", params.order);
-    if (params?.order_item__kitchen) searchParams.append("order_item__kitchen", params.order_item__kitchen);
-    if (params?.order__dining_table) searchParams.append("order__dining_table", params.order__dining_table);
-    if (params?.dietary_type) searchParams.append("dietary_type", params.dietary_type);
-    if (params?.spice_level) searchParams.append("spice_level", params.spice_level);
-    if (params?.order_type) searchParams.append("order_type", params.order_type);
-    if (params?.serving_size) searchParams.append("serving_size", params.serving_size);
+    if (params?.status && params.status !== "all") searchParams.append("status", params.status);
+    if (params?.order && params.order.trim()) searchParams.append("order", params.order);
+    if (params?.order_item__kitchen && params.order_item__kitchen.trim()) searchParams.append("order_item__kitchen", params.order_item__kitchen);
+    if (params?.order__dining_table && params.order__dining_table.trim()) searchParams.append("order__dining_table", params.order__dining_table);
+    if (params?.dietary_type && params.dietary_type !== "all") searchParams.append("dietary_type", params.dietary_type);
+    if (params?.spice_level && params.spice_level !== "all") searchParams.append("spice_level", params.spice_level);
+    if (params?.order_type && params.order_type !== "all") searchParams.append("order_type", params.order_type);
+    if (params?.serving_size && params.serving_size !== "all") searchParams.append("serving_size", params.serving_size);
 
     const queryString = searchParams.toString();
     const url = `core-app/order_items/list${queryString ? `?${queryString}` : ""}`;
