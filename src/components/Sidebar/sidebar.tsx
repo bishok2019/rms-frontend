@@ -35,17 +35,18 @@ export function Sidebar() {
 
   return (
     <aside
-      className={cn(
-        "fixed top-0 left-0 z-20 h-screen w-72 font-poppins scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent",
-        settings.disabled && "hidden",
-        !getOpenState() && "lg:hidden"
-      )}
+        className={cn(
+          "fixed top-0 left-0 z-20 h-screen w-72 font-poppins scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent",
+          settings.disabled && "hidden",
+          !getOpenState() && "lg:hidden"
+        )}
+        style={{ borderRight: 'none' }}
     >
       <div
         onMouseEnter={() => setIsHover(true)}
         onMouseLeave={() => setIsHover(false)}
         className={cn(
-          "relative h-full flex flex-col px-3 py-4 overflow-y-auto shadow-lg dark:shadow-black/60 border-r scrollbar-hidden bg-background border-border"
+          "relative h-full flex flex-col px-3 py-4 overflow-y-auto scrollbar-hidden bg-background"
         )}
       >
         <Button
