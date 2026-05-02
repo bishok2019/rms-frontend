@@ -166,132 +166,12 @@ export default function UsersPage() {
     <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Users Management</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button
-              className="bg-primary text-primary-foreground w-full md:w-auto"
-              onClick={handleCreate}
-            >
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-card border-border">
-            <DialogHeader>
-              <DialogTitle>
-                {isCreateMode ? "Add New User" : "Edit User"}
-              </DialogTitle>
-              <DialogDescription>
-                {isCreateMode
-                  ? "Fill in the details to create a new user account."
-                  : "Update the user information and save changes."
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">Username</Label>
-                <Input
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  className="bg-background text-foreground border-border"
-                  placeholder="Enter username"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="bg-background text-foreground border-border"
-                  placeholder="Enter email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="mobile_no">Phone</Label>
-                <Input
-                  id="mobile_no"
-                  name="mobile_no"
-                  value={formData.mobile_no}
-                  onChange={handleChange}
-                  className="bg-background text-foreground border-border"
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="bg-background text-foreground border-border pr-10"
-                    placeholder="Enter new password (optional)"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="user_type">User Type</Label>
-                <select
-                  id="user_type"
-                  name="user_type"
-                  value={formData.user_type}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-md"
-                >
-                  <option value="waiter">Waiter</option>
-                  <option value="cleaner">Cleaner</option>
-                  <option value="manager">Manager</option>
-                  <option value="cook">Cook</option>
-                  <option value="system">System</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="is_active">Status</Label>
-                <select
-                  id="is_active"
-                  name="is_active"
-                  value={formData.is_active ? "true" : "false"}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.value === "true" }))}
-                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-md"
-                >
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
-              <Button
-                onClick={handleSubmit}
-                disabled={updating || creating}
-                className="w-full"
-              >
-                {(updating || creating) ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {creating ? "Creating..." : "Updating..."}
-                  </>
-                ) : (
-                  isCreateMode ? "Create User" : "Update User"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button
+          className="bg-primary text-primary-foreground w-full md:w-auto"
+          onClick={handleCreate}
+        >
+          Add User
+        </Button>
       </div>
 
       {/* Search and Filters */}
@@ -339,10 +219,130 @@ export default function UsersPage() {
         </div>
       </Card>
 
-      <Card className="bg-card border-border overflow-hidden">
+      <Card className="bg-card border-border overflow-hidden sticky top-0 z-40">
+        <CardHeader>
+          <CardTitle>Users</CardTitle>
+        </CardHeader>
 
-        <CardContent>
-          <div className="overflow-auto max-h-96 relative">
+        <CardContent className="max-h-96 overflow-auto relative">
+          {(open || isCreateMode) && (
+            <div className="mb-6 p-4 border rounded-lg bg-muted/50">
+              <h3 className="text-lg font-semibold mb-4">
+                {isCreateMode ? "Add New User" : "Edit User"}
+              </h3>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="first_name">Username</Label>
+                  <Input
+                    id="first_name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    className="bg-background text-foreground border-border"
+                    placeholder="Enter username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="bg-background text-foreground border-border"
+                    placeholder="Enter email"
+                    type="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mobile_no">Phone</Label>
+                  <Input
+                    id="mobile_no"
+                    name="mobile_no"
+                    value={formData.mobile_no}
+                    onChange={handleChange}
+                    className="bg-background text-foreground border-border"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="user_type">User Type</Label>
+                  <select
+                    id="user_type"
+                    name="user_type"
+                    value={formData.user_type}
+                    onChange={handleChange}
+                    className="h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="waiter">Waiter</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="is_active"
+                    name="is_active"
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <Label htmlFor="is_active">Active</Label>
+                </div>
+                {isCreateMode && (
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="bg-background text-foreground border-border pr-10"
+                        placeholder="Enter password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setOpen(false);
+                      setIsCreateMode(false);
+                      setEditingId(null);
+                      setFormData({
+                        first_name: "",
+                        email: "",
+                        mobile_no: "",
+                        user_type: "waiter",
+                        is_active: true,
+                        password: "",
+                      });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={creating || updating}>
+                    {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {updating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                    {isCreateMode ? "Create User" : "Update User"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow className="border-border hover:bg-transparent">
@@ -436,7 +436,6 @@ export default function UsersPage() {
                 )}
               </TableBody>
             </Table>
-          </div>
         </CardContent>
       </Card>
     </div>
