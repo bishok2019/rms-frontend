@@ -342,7 +342,7 @@ export default function UsersPage() {
       <Card className="bg-card border-border overflow-hidden">
 
         <CardContent>
-          <div className="overflow-auto max-h-96">
+          <div className="overflow-auto max-h-96 relative">
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow className="border-border hover:bg-transparent">
