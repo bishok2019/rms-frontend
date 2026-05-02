@@ -163,7 +163,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
+    <div className="h-full overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Users Management</h1>
         <Button
@@ -174,57 +174,52 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Search and Filters */}
-      <Card className="bg-card border-border p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="search">Search</Label>
-            <Input
-              id="search"
-              placeholder="Search by username..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="bg-background text-foreground border-border"
-            />
-          </div>
-          <div className="w-full md:w-48 space-y-2">
-            <Label htmlFor="user_type_filter">User Type</Label>
-            <select
-              id="user_type_filter"
-              value={filters.user_type || ""}
-              onChange={(e) => handleFilterChange("user_type", e.target.value)}
-              className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-md"
-            >
-              <option value="">All Types</option>
-              <option value="waiter">Waiter</option>
-              <option value="cleaner">Cleaner</option>
-              <option value="manager">Manager</option>
-              <option value="cook">Cook</option>
-              <option value="system">System</option>
-            </select>
-          </div>
-          <div className="w-full md:w-48 space-y-2">
-            <Label htmlFor="status_filter">Status</Label>
-            <select
-              id="status_filter"
-              value={filters.is_active === undefined ? "" : filters.is_active ? "true" : "false"}
-              onChange={(e) => handleFilterChange("is_active", e.target.value === "" ? undefined : e.target.value === "true")}
-              className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-md"
-            >
-              <option value="">All Status</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-        </div>
-      </Card>
+      <Card className="bg-card border-none overflow-hidden h-full">
 
-      <Card className="bg-card border-border overflow-hidden sticky top-0 z-40">
-        <CardHeader>
-          <CardTitle>Users</CardTitle>
-        </CardHeader>
-
-        <CardContent className="max-h-96 overflow-auto relative">
+        <CardContent className="h-full overflow-auto relative">
+          <div className="sticky top-0 bg-card z-10 p-4 border-b border-border mb-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="search">Search</Label>
+                <Input
+                  id="search"
+                  placeholder="Search by username..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="bg-background text-foreground border-border"
+                />
+              </div>
+              <div className="w-full md:w-48 space-y-2">
+                <Label htmlFor="user_type_filter">User Type</Label>
+                <select
+                  id="user_type_filter"
+                  value={filters.user_type || ""}
+                  onChange={(e) => handleFilterChange("user_type", e.target.value)}
+                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-md"
+                >
+                  <option value="">All Types</option>
+                  <option value="waiter">Waiter</option>
+                  <option value="cleaner">Cleaner</option>
+                  <option value="manager">Manager</option>
+                  <option value="cook">Cook</option>
+                  <option value="system">System</option>
+                </select>
+              </div>
+              <div className="w-full md:w-48 space-y-2">
+                <Label htmlFor="status_filter">Status</Label>
+                <select
+                  id="status_filter"
+                  value={filters.is_active === undefined ? "" : filters.is_active ? "true" : "false"}
+                  onChange={(e) => handleFilterChange("is_active", e.target.value === "" ? undefined : e.target.value === "true")}
+                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-md"
+                >
+                  <option value="">All Status</option>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+            </div>
+          </div>
           {(open || isCreateMode) && (
             <div className="mb-6 p-4 border rounded-lg bg-muted/50">
               <h3 className="text-lg font-semibold mb-4">
@@ -344,7 +339,7 @@ export default function UsersPage() {
             </div>
           )}
             <Table>
-              <TableHeader className="sticky top-0 bg-card z-10">
+              <TableHeader className="sticky top-16 bg-card z-10">
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="text-foreground">Username</TableHead>
                   <TableHead className="text-foreground hidden md:table-cell">
