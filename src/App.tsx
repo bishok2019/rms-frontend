@@ -72,7 +72,7 @@ function App() {
     <BackgroundPreferenceProvider
       value={{ bgImagesEnabled, setBgImagesEnabled }}
     >
-      <div className="relative min-h-screen overflow-x-hidden isolate">
+      <div className="relative min-h-screen overflow-x-hidden isolate bg-background">
         {/* {bgImagesEnabled ? (
           <div className="fixed inset-0 z-0">
             {bgImage ? (
