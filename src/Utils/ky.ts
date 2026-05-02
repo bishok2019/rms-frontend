@@ -90,6 +90,8 @@ const createKyInstance = ({
     hooks: {
       beforeRequest: [
         (request: Request) => {
+          request.headers.set("ngrok-skip-browser-warning", "true");
+
           if (!includeAuth) {
             return;
           }
