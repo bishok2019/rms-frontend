@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 import type { Order, OrderItem } from "../../types/api";
 import { ordersApi } from "../../services/orders";
-import { User, Phone, MapPin, Receipt, Edit2 } from "lucide-react";
+import { User, Phone, MapPin, Receipt, Edit2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface OrderDetailsProps {
@@ -16,6 +24,7 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customerDetailsCollapsed, setCustomerDetailsCollapsed] = useState(false);
   const customer = order && typeof order.customer === "object" ? order.customer : null;
 
   useEffect(() => {
@@ -77,6 +86,8 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
 
 
 
+
+
   if (!order) {
     return (
       <Card className="">
@@ -97,54 +108,72 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Receipt className="h-5 w-5" />
-          Order #{order.orderNumber}
+          Order Details
         </h2>
       </div>
 
       {/* Customer Details */}
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Customer Details</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {customer ? (
-            <div className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <User className="h-3 w-3 text-muted-foreground" />
-                <span className="font-medium">{customer.fullName}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-3 w-3 text-muted-foreground" />
-                <span>{customer.phone}</span>
-              </div>
-              {customer.address && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-3 w-3 text-muted-foreground mt-0.5" />
-                  <span className="text-xs">{customer.address}</span>
-                </div>
+      <Card className="mb-2 min-h-[6rem]">
+        <CardHeader className="pb-1">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Customer Details</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCustomerDetailsCollapsed(!customerDetailsCollapsed)}
+              className="h-5 w-5 p-0"
+            >
+              {customerDetailsCollapsed ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronUp className="h-3 w-3" />
               )}
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs">Points:</span>
-                <span className="font-medium">{customer.loyaltyPoints}</span>
+            </Button>
+          </div>
+        </CardHeader>
+        {!customerDetailsCollapsed && (
+          <CardContent className="pt-0 pb-2 px-3">
+            {customer ? (
+              <div className="flex items-center gap-3 text-xs flex-wrap">
+                <div className="flex items-center gap-1">
+                  <Receipt className="h-2.5 w-2.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Order:</span>
+                  <span className="font-medium">#{order.orderNumber}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <User className="h-2.5 w-2.5 text-muted-foreground" />
+                  <span className="font-medium">{customer.fullName}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Phone className="h-2.5 w-2.5 text-muted-foreground" />
+                  <span>{customer.phone}</span>
+                </div>
+                {customer.address && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-2.5 w-2.5 text-muted-foreground" />
+                    <span className="text-xs">{customer.address}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Points:</span>
+                  <span className="font-medium">{customer.loyaltyPoints}</span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Walk-in customer</p>
-          )}
-        </CardContent>
+            ) : (
+              <p className="text-xs text-muted-foreground">Walk-in customer</p>
+            )}
+          </CardContent>
+        )}
       </Card>
 
 
 
       {/* Order Items */}
-      <Card className="flex-1">
-        <CardHeader className="pb-3">
+      <Card className="h-96 flex flex-col overflow-hidden">
+        <CardHeader className="pb-0">
           <CardTitle className="text-lg">Order Items</CardTitle>
-          <div className="text-sm text-muted-foreground">
-            Order #{order.orderNumber}
-          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -156,55 +185,49 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
             </div>
           ) : orderItems.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No items found
+              {order ? "No items found" : "Select an order to view items"}
             </div>
           ) : (
-            <div className="space-y-3">
-              {orderItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 p-3 border rounded-lg"
-                >
-                  <div className="text-2xl">
-                    {getDietaryIcon(item.dietaryType)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="mb-2">
-                      <h4 className="font-medium text-sm">
-                        {getOrderItemLabel(item)}
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                      <span>Qty: {item.quantity}</span>
-                      {item.servingSize && (
-                        <span>Size: {item.servingSize}</span>
-                      )}
-                      {item.spiceLevel !== "none" && (
-                        <span>Spice: {item.spiceLevel}</span>
-                      )}
-                    </div>
-
-                     {item.note && (
-                       <p className="text-xs text-muted-foreground italic">
-                         Note: {item.note}
-                       </p>
-                     )}
-                   </div>
-                   {onEditItem && (
-                     <Button
-                       variant="ghost"
-                       size="sm"
-                       onClick={() => onEditItem(item)}
-                       className="self-start"
-                     >
-                       <Edit2 className="h-3 w-3 mr-1" />
-                       Edit
-                     </Button>
-                   )}
-                 </div>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Spice</TableHead>
+                  <TableHead>Note</TableHead>
+                  {onEditItem && <TableHead>Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getDietaryIcon(item.dietaryType)}</span>
+                        <span className="font-medium">{getOrderItemLabel(item)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{item.servingSize || "-"}</TableCell>
+                    <TableCell>{item.spiceLevel !== "none" ? item.spiceLevel : "-"}</TableCell>
+                    <TableCell className="max-w-xs truncate">{item.note || "-"}</TableCell>
+                    {onEditItem && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEditItem(item)}
+                        >
+                          <Edit2 className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2, Edit2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Trash2, Edit2, Loader2, Eye, EyeOff, User as UserIcon } from "lucide-react";
 import { fetchUsers, updateUser, createUser, type User, type UpdateUserData, type CreateUserData, type UserFilters } from "../Authentication/Store/api";
 import { useStore } from "@/hooks/use-store";
 import { useSidebar } from "@/hooks/use-sidebar";
@@ -323,7 +323,7 @@ export default function UsersPage() {
             <div></div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0 h-[calc(100vh-180px)] overflow-y-auto px-6 pb-6 text-lg">
+        <CardContent className="flex-1 min-h-0 h-[calc(100vh-180px)] overflow-y-auto px-6 pb-6">
           <Table>
             <TableHeader>
               <TableRow>
