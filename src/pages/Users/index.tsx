@@ -290,7 +290,7 @@ export default function UsersPage() {
           </div>
         </div>
       )}
-      <Card className="border-none flex-1 flex flex-col min-h-0 h-[calc(100vh-64px)] max-w-7xl w-full mx-auto shadow-xl text-base">
+      <Card className="min-h-[70vh]">
         <CardHeader className="pb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
             <Input
@@ -323,7 +323,7 @@ export default function UsersPage() {
             <div></div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0 h-[calc(100vh-180px)] overflow-y-auto px-6 pb-6">
+        <CardContent >
           <Table>
             <TableHeader>
               <TableRow>
@@ -335,7 +335,7 @@ export default function UsersPage() {
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="min-h-[100px] max-h-[400px] overflow-y-auto" >
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">

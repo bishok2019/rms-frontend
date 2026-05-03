@@ -528,7 +528,7 @@ export default function KitchenPage() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="max-h-[600px] overflow-y-auto">
+            <CardContent className="max-h-[900px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -539,7 +539,7 @@ export default function KitchenPage() {
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="min-h-[50px] max-h-[200px] overflow-y-auto">
                   {kitchens.map((kitchen) => (
                     <TableRow
                       key={kitchen.id}
