@@ -254,86 +254,93 @@ export default function MenuSetup() {
         {activeTab === "categories" && (
         <div className="space-y-4">
 
-            <Card className="bg-card border-border overflow-hidden">
-              <CardContent className="pt-6 min-h-[528px] max-h-[528px] overflow-y-auto">
-               <p className="text-sm text-muted-foreground mb-4">
-                 Double-click any category card to open Menu Items filtered by that category.
-               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                {paginatedCategories.map((category) => {
-                  const count = category.totalMenuItems || 0;
+            <Card className="bg-card border-border">
+              <CardContent className="p-6">
+                <div className="min-h-[528px] max-h-[528px] overflow-y-auto">
+                 <p className="text-sm text-muted-foreground mb-4">
+                   Double-click any category card to open Menu Items filtered by that category.
+                 </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {paginatedCategories.map((category) => {
+                    const count = category.totalMenuItems || 0;
 
-                  return (
-                    <div
-                      key={category.id}
-                      onDoubleClick={() => {
-                        setItemCategoryFilter(category.name);
-                        setActiveTab("items");
-                      }}
-                      className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="font-semibold text-foreground">{category.name}</h3>
-                          <p className="text-xs text-primary mt-1">{count} item{count === 1 ? "" : "s"}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditCategory(category)}
-                            className="text-muted-foreground hover:text-foreground"
+                    return (
+                      <div
+                        key={category.id}
+                        onDoubleClick={() => {
+                          setItemCategoryFilter(category.name);
+                          setActiveTab("items");
+                        }}
+                        className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Grid3x3 className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-foreground">{category.name}</h3>
+                              <p className="text-xs text-primary mt-1">{count} item{count === 1 ? "" : "s"}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditCategory(category)}
+                              className="text-muted-foreground hover:text-foreground"
 
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteCategory(category.id)}
-                            className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCategory(category.id)}
+                              className="text-muted-foreground hover:text-destructive"
 
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Categories Pagination Controls */}
-              {totalCategoryPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {categoryStartIndex + 1}-{Math.min(categoryEndIndex, categories.length)} of {categories.length} categories
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCategoryPage(prev => Math.max(prev - 1, 1))}
-                      disabled={categoryPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm">
-                      Page {categoryPage} of {totalCategoryPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCategoryPage(prev => Math.min(prev + 1, totalCategoryPages))}
-                      disabled={categoryPage === totalCategoryPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                </div>
+
+                {/* Categories Pagination Controls - Outside scrollable area */}
+                {totalCategoryPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {categoryStartIndex + 1}-{Math.min(categoryEndIndex, categories.length)} of {categories.length} categories
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCategoryPage(prev => Math.max(prev - 1, 1))}
+                        disabled={categoryPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm">
+                        Page {categoryPage} of {totalCategoryPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCategoryPage(prev => Math.min(prev + 1, totalCategoryPages))}
+                        disabled={categoryPage === totalCategoryPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
         </div>
         )}
 
@@ -405,74 +412,76 @@ export default function MenuSetup() {
             </Button>
           </div>
 
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="min-h-[528px] max-h-[528px] overflow-y-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                {paginatedMenuItems.map((item) => {
-                  return (
-                  <div
-                    key={item.id}
-                    className="rounded-lg border border-border p-3 min-h-[100px] bg-background/40 hover:bg-secondary/40 transition-colors relative overflow-hidden"
-                    style={item.photo ? {
-                      backgroundImage: `url(${item.photo})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat'
-                    } : {}}
-                  >
-                    {/* Overlay for text readability when there's a background image */}
-                    {item.photo && (
-                      <div className="absolute inset-0 bg-black/40"></div>
-                    )}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              <div className="min-h-[528px] max-h-[528px] overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {paginatedMenuItems.map((item) => {
+                    return (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-border p-3 min-h-[100px] bg-background/40 hover:bg-secondary/40 transition-colors relative overflow-hidden"
+                      style={item.photo ? {
+                        backgroundImage: `url(${item.photo})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat'
+                      } : {}}
+                    >
+                      {/* Overlay for text readability when there's a background image */}
+                      {item.photo && (
+                        <div className="absolute inset-0 bg-black/40"></div>
+                      )}
 
-                    {/* Content */}
-                    <div className="relative z-10">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <h4 className={`font-semibold truncate ${item.photo ? 'text-white' : ''}`}>
-                            {item.name}
-                          </h4>
-                          <p className={`text-xs mt-0.5 ${item.photo ? 'text-white/80' : 'text-muted-foreground'}`}>
-                            {resolveNamedField(item.category)}{item.kitchen ? ` • ${resolveNamedField(item.kitchen)}` : ''}
-                          </p>
+                      {/* Content */}
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h4 className={`font-semibold truncate ${item.photo ? 'text-white' : ''}`}>
+                              {item.name}
+                            </h4>
+                            <p className={`text-xs mt-0.5 ${item.photo ? 'text-white/80' : 'text-muted-foreground'}`}>
+                              {resolveNamedField(item.category)}{item.kitchen ? ` • ${resolveNamedField(item.kitchen)}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditItem(item)}
+                              className={`hover:bg-white/20 ${item.photo ? 'text-white hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteItem(item.id)}
+                              className={`hover:bg-white/20 ${item.photo ? 'text-white hover:text-white' : 'text-destructive hover:text-destructive'}`}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditItem(item)}
-                            className={`hover:bg-white/20 ${item.photo ? 'text-white hover:text-white' : 'text-muted-foreground hover:text-foreground'}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteItem(item.id)}
-                            className={`hover:bg-white/20 ${item.photo ? 'text-white hover:text-white' : 'text-destructive hover:text-destructive'}`}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+
+                        <p className={`text-sm mt-3 line-clamp-3 min-h-14 ${item.photo ? 'text-white/90' : 'text-muted-foreground'}`}>
+                          {item.description || "No description"}
+                        </p>
                       </div>
 
-                      <p className={`text-sm mt-3 line-clamp-3 min-h-14 ${item.photo ? 'text-white/90' : 'text-muted-foreground'}`}>
-                        {item.description || "No description"}
-                      </p>
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Price</span>
+                        <span className="font-semibold text-red-600">{item.price}</span>
+                      </div>
                     </div>
-
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Price</span>
-                      <span className="font-semibold text-red-600">{item.price}</span>
-                    </div>
-                  </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Pagination Controls */}
+              {/* Pagination Controls - Outside scrollable area */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
                   <div className="text-sm text-muted-foreground">
                     Showing {startIndex + 1}-{Math.min(endIndex, filteredMenuItems.length)} of {filteredMenuItems.length} items
                   </div>
