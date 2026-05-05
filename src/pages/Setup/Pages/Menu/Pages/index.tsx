@@ -142,7 +142,7 @@ export default function MenuSetup() {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
+    <div className="p-4 md:p-6 space-y-6 min-h-screen">
       <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
@@ -179,8 +179,8 @@ export default function MenuSetup() {
             </Dialog>
           </div>
 
-           <Card className="bg-card border-border overflow-hidden">
-             <CardContent className="max-h-[600px] overflow-y-auto pt-6">
+            <Card className="bg-card border-border overflow-hidden">
+              <CardContent className="pt-6 min-h-[528px] max-h-[528px] overflow-y-auto">
                <p className="text-sm text-muted-foreground mb-4">
                  Double-click any category card to open Menu Items filtered by that category.
                </p>
@@ -263,13 +263,13 @@ export default function MenuSetup() {
           </div>
 
           <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="max-h-[600px] overflow-y-auto">
+            <CardContent className="min-h-[528px] max-h-[528px] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredMenuItems.map((item) => {
                   return (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-border p-4 min-h-[120px] bg-card relative overflow-hidden"
+                    className="rounded-lg border border-border p-4 min-h-[120px] bg-background/40 hover:bg-secondary/40 transition-colors relative overflow-hidden"
                     style={item.photo ? {
                       backgroundImage: `url(${item.photo})`,
                       backgroundSize: 'cover',
