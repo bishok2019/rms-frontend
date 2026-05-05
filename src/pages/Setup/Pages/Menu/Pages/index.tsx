@@ -52,6 +52,8 @@ export default function MenuSetup() {
   const [itemVariantFilter, setItemVariantFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12); // 4 rows × 3 columns
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [categoriesPerPage] = useState(12); // 4 rows × 3 columns
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -140,16 +142,27 @@ export default function MenuSetup() {
     return matchesCategory && matchesKitchen && matchesAvailability && matchesVariant && matchesSearch;
   });
 
-  // Pagination logic
+  // Menu Items Pagination logic
   const totalPages = Math.ceil(filteredMenuItems.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedMenuItems = filteredMenuItems.slice(startIndex, endIndex);
 
+  // Categories Pagination logic
+  const totalCategoryPages = Math.ceil(categories.length / categoriesPerPage);
+  const categoryStartIndex = (categoryPage - 1) * categoriesPerPage;
+  const categoryEndIndex = categoryStartIndex + categoriesPerPage;
+  const paginatedCategories = categories.slice(categoryStartIndex, categoryEndIndex);
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [itemSearch, itemCategoryFilter, itemKitchenFilter, itemAvailabilityFilter, itemVariantFilter]);
+
+  // Reset category page when switching tabs
+  useEffect(() => {
+    setCategoryPage(1);
+  }, [activeTab]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 h-screen overflow-hidden flex flex-col">
@@ -247,7 +260,7 @@ export default function MenuSetup() {
                  Double-click any category card to open Menu Items filtered by that category.
                </p>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {categories.map((category) => {
+                {paginatedCategories.map((category) => {
                   const count = category.totalMenuItems || 0;
 
                   return (
@@ -289,6 +302,36 @@ export default function MenuSetup() {
                   );
                 })}
               </div>
+
+              {/* Categories Pagination Controls */}
+              {totalCategoryPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {categoryStartIndex + 1}-{Math.min(categoryEndIndex, categories.length)} of {categories.length} categories
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCategoryPage(prev => Math.max(prev - 1, 1))}
+                      disabled={categoryPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm">
+                      Page {categoryPage} of {totalCategoryPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCategoryPage(prev => Math.min(prev + 1, totalCategoryPages))}
+                      disabled={categoryPage === totalCategoryPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
