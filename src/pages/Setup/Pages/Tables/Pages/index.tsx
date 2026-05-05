@@ -362,7 +362,7 @@ export default function TablesPage() {
                       setAreaFilter(area.name);
                       setActiveTab("tables");
                     }}
-                    className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer"
+                    className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer min-h-[120px]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
