@@ -121,7 +121,6 @@ export default function TablesPage() {
       table.area.toLowerCase().includes(tableSearch.toLowerCase());
     return matchesArea && matchesOccupied && matchesSearch;
   });
-  console.log('filteredTables:', filteredTables, 'areaFilter:', areaFilter, 'occupiedFilter:', occupiedFilter);
 
   const handleEditTable = (table: TableRecord) => {
     setSelectedTable(table);
