@@ -232,7 +232,7 @@ export default function TablesPage() {
     setSelectedTable(null);
   };
   return (
-    <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
+    <div className="p-4 md:p-6 space-y-6 min-h-screen">
       <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Tables & Areas</h1>
       </div>
@@ -347,7 +347,7 @@ export default function TablesPage() {
         <div className="space-y-4">
 
           <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6 min-h-[600px]">
+            <CardContent className="pt-6 min-h-[528px] max-h-[528px] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {areas.map((area) => (
                   <div
