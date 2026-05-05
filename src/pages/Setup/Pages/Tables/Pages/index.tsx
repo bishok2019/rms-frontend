@@ -76,6 +76,7 @@ export default function TablesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"areas" | "tables" | "order-items">("areas");
+  const [sectionsLoaded, setSectionsLoaded] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "occupied" | "vacant">(
@@ -93,13 +94,20 @@ export default function TablesPage() {
     servingSize: "all",
   });
   const { data: sectionsResponse } = useSections(true); // Always load sections
-  const { data: diningTablesResponse } = useDiningTables(activeTab === "areas" || activeTab === "tables" || activeTab === "order-items");
+  const { data: diningTablesResponse } = useDiningTables(sectionsLoaded && (activeTab === "areas" || activeTab === "tables" || activeTab === "order-items"));
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
   const tables =
     diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table, areas)) ??
     [];
+
+  // Set sectionsLoaded when sections are fetched
+  useEffect(() => {
+    if (sectionsResponse) {
+      setSectionsLoaded(true);
+    }
+  }, [sectionsResponse]);
 
   const filteredTables = tables.filter((table) => {
     const matchesArea = areaFilter === "" || table.area === areaFilter;
