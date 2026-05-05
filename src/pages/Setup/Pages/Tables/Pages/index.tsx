@@ -94,7 +94,8 @@ export default function TablesPage() {
     servingSize: "all",
   });
   const { data: sectionsResponse } = useSections(true); // Always load sections
-  const { data: diningTablesResponse } = useDiningTables(sectionsLoaded && (activeTab === "tables" || activeTab === "order-items"));
+  const diningTablesParams = (activeTab === "tables" && areaFilter) ? { section: areas.find(a => a.name === areaFilter)?.id } : undefined;
+  const { data: diningTablesResponse } = useDiningTables(sectionsLoaded && (activeTab === "tables" || activeTab === "order-items"), diningTablesParams);
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
