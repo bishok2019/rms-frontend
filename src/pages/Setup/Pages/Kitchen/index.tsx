@@ -36,6 +36,7 @@ import {
   useKitchens,
   useCreateKitchen,
   useUpdateKitchen,
+  useAllKitchens,
 } from "./Store/KitchenStores";
 import { ordersApi } from "@/services/orders";
 import { privateApiInstance } from "@/Utils/ky";
@@ -56,7 +57,7 @@ export default function KitchenPage() {
     status: "all",
     dietaryType: "all",
   });
-  const [allKitchensList, setAllKitchensList] = useState<Kitchen[]>([]);
+
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -72,11 +73,12 @@ export default function KitchenPage() {
     maxCapacity: "",
   });
 
-  const { data: categoriesData } = useKitchenCategories(activeTab === "categories" || activeTab === "kitchens");
+  const { data: categoriesData } = useKitchenCategories(activeTab === "categories" || isKitchenDialogOpen);
   const { data: kitchensData } = useKitchens(
     activeTab === "kitchens",
     selectedCategoryFilter ? { category: selectedCategoryFilter.id } : undefined
   );
+  const { data: allKitchensData } = useAllKitchens(activeTab === "order-items" || isKitchenDialogOpen);
   const { mutateAsync: createCategory } = useCreateKitchenCategory();
   const { mutateAsync: updateCategory } = useUpdateKitchenCategory();
   const { mutateAsync: createKitchen } = useCreateKitchen();
@@ -104,27 +106,16 @@ export default function KitchenPage() {
     }
   }, [selectedKitchen]);
 
-  useEffect(() => {
-    const fetchKitchens = async () => {
-      try {
-        const response = await privateApiInstance.get("core-app/kitchen/list").json() as PaginatedApiResponse<Kitchen>;
-        setAllKitchensList(response.data || []);
-      } catch (error) {
-        console.error("Error fetching kitchens:", error);
-        setAllKitchensList([]);
-      }
-    };
-    fetchKitchens();
-  }, []);
+
 
   useEffect(() => {
-    if (filters.kitchenId) {
-      const kitchen = allKitchensList.find(k => k.id.toString() === filters.kitchenId);
+    if (filters.kitchenId && allKitchensData?.data) {
+      const kitchen = allKitchensData.data.find(k => k.id.toString() === filters.kitchenId);
       setSelectedKitchen(kitchen || null);
     } else {
       setSelectedKitchen(null);
     }
-  }, [filters.kitchenId, allKitchensList]);
+  }, [filters.kitchenId, allKitchensData?.data]);
 
   const handleCategorySubmit = async () => {
     const data = {
@@ -213,14 +204,17 @@ export default function KitchenPage() {
   };
 
   const handleKitchenDoubleClick = async (kitchen: Kitchen) => {
+    console.log("handleKitchenDoubleClick called for kitchen:", kitchen);
     setSelectedKitchen(kitchen);
     setFilters(prev => ({ ...prev, kitchenId: kitchen.id.toString() }));
     setActiveTab("order-items");
-    await fetchKitchenOrderItems();
+    // No need to call fetchKitchenOrderItems here, the useEffect will handle it
   };
 
   const fetchKitchenOrderItems = useCallback(async () => {
+    console.log("fetchKitchenOrderItems called with filters:", filters);
     if (!filters.kitchenId) {
+      console.log("No kitchenId in filters, returning");
       setKitchenOrderItems([]);
       setIsLoadingOrderItems(false);
       return;
@@ -229,7 +223,7 @@ export default function KitchenPage() {
     try {
       setIsLoadingOrderItems(true);
       const params: { [key: string]: any } = {
-        order_item__kitchen: parseInt(filters.kitchenId),
+        order_item__kitchen: filters.kitchenId,
         page_size: 100,
       };
 
@@ -241,10 +235,26 @@ export default function KitchenPage() {
         params.dietary_type = filters.dietaryType;
       }
 
+      console.log("Calling ordersApi.getOrderItemsList with params:", params);
       const response = await ordersApi.getOrderItemsList(params);
+      console.log("API response:", response);
 
       if (response.data) {
-        setKitchenOrderItems(response.data);
+        // Transform API response to match expected OrderItem structure
+        const dietaryMap: { [key: string]: string } = {
+          veg: 'Vegetarian',
+          non_veg: 'Non-Vegetarian',
+          vegan: 'Vegan',
+          gluten_free: 'Gluten Free',
+        };
+        const transformedData = response.data.map((item: any) => ({
+          ...item,
+          menu_item: { name: item.orderItem },
+          dietary_type: dietaryMap[item.dietaryType] || item.dietaryType,
+          spice_level: item.spiceLevel,
+          special_instructions: item.note,
+        }));
+        setKitchenOrderItems(transformedData);
       } else {
         setKitchenOrderItems([]);
       }
@@ -255,6 +265,13 @@ export default function KitchenPage() {
       setIsLoadingOrderItems(false);
     }
   }, [filters]);
+
+  // Fetch order items when filters change and we're on the order-items tab
+  useEffect(() => {
+    if (activeTab === "order-items" && filters.kitchenId) {
+      fetchKitchenOrderItems();
+    }
+  }, [filters, activeTab, fetchKitchenOrderItems]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 h-full overflow-hidden flex flex-col">
@@ -602,17 +619,18 @@ export default function KitchenPage() {
                   </div>
                    <div className="flex items-center gap-2">
                      <Label htmlFor="dietaryFilter">Dietary Type:</Label>
-                     <select
-                       id="dietaryFilter"
-                       value={filters.dietaryType}
-                       onChange={(e) => setFilters(prev => ({ ...prev, dietaryType: e.target.value }))}
-                       className="h-8 rounded border border-border bg-background px-2 text-sm"
-                     >
-                       <option value="all">All Types</option>
-                       <option value="vegetarian">Vegetarian</option>
-                       <option value="non-vegetarian">Non-Vegetarian</option>
-                       <option value="vegan">Vegan</option>
-                     </select>
+                      <select
+                        id="dietaryFilter"
+                        value={filters.dietaryType}
+                        onChange={(e) => setFilters(prev => ({ ...prev, dietaryType: e.target.value }))}
+                        className="h-8 rounded border border-border bg-background px-2 text-sm"
+                      >
+                        <option value="all">All Types</option>
+                        <option value="veg">Vegetarian</option>
+                        <option value="non_veg">Non-Vegetarian</option>
+                        <option value="vegan">Vegan</option>
+                        <option value="gluten_free">Gluten Free</option>
+                      </select>
                    </div>
                    <div className="flex items-center gap-2">
                      <Label htmlFor="kitchenFilter">Kitchen:</Label>
@@ -623,7 +641,7 @@ export default function KitchenPage() {
                        className="h-8 rounded border border-border bg-background px-2 text-sm"
                      >
                        <option value="">All Kitchens</option>
-                      {allKitchensList.map((kitchen) => (
+                      {(allKitchensData?.data || []).map((kitchen) => (
                         <option key={kitchen.id} value={kitchen.id.toString()}>{kitchen.name}</option>
                       ))}
                      </select>

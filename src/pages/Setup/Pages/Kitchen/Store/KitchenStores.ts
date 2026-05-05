@@ -105,3 +105,11 @@ export const useKitchens = (
     enabled,
   });
 };
+
+export const useAllKitchens = (enabled: boolean = true) => {
+  return useQuery({
+    queryKey: kitchenQueryKeys.list(),
+    queryFn: () => getKitchens(),
+    enabled,
+  });
+};

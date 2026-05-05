@@ -87,6 +87,7 @@ export const ordersApi = {
 
     const queryString = searchParams.toString();
     const url = `core-app/order_items/list${queryString ? `?${queryString}` : ""}`;
+    console.log("API: getOrderItemsList calling URL:", url);
 
     return privateApiInstance.get(url).json<PaginatedApiResponse<OrderItem>>();
   },

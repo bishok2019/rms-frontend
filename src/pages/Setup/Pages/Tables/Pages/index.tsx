@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Trash2, Plus, Grid3x3, Loader2, ChefHat } from "lucide-react";
+import { Edit, Trash2, Plus, Grid3x3, Loader2, ChefHat, CheckCircle, XCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -354,39 +354,50 @@ export default function TablesPage() {
                       }}
                       className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Grid3x3 className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">{area.name}</h3>
-                            <p className="text-xs text-primary mt-1">
-                              {count} table{count === 1 ? "" : "s"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedArea(area);
-                              setIsAreaSheetOpen(true);
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+                       <div className="flex items-start justify-between gap-3">
+                         <div className="flex items-start gap-3">
+                           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                             <Grid3x3 className="w-5 h-5 text-primary" />
+                           </div>
+                           <div>
+                             <h3 className="font-semibold text-foreground">{area.name}</h3>
+                             <p className="text-xs text-muted-foreground mt-1">
+                               {area.description}
+                             </p>
+                             <p className="text-xs text-primary mt-1">
+                               Total: {area.totalTables} table{parseInt(area.totalTables) === 1 ? "" : "s"}
+                             </p>
+                           </div>
+                         </div>
+                         <div className="flex flex-col items-end gap-2">
+                           <div className="flex items-center gap-1">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => {
+                                 setSelectedArea(area);
+                                 setIsAreaSheetOpen(true);
+                               }}
+                               className="text-muted-foreground hover:text-foreground"
+                             >
+                               <Edit className="w-4 h-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="text-destructive hover:text-destructive"
+                             >
+                               <Trash2 className="w-4 h-4" />
+                             </Button>
+                           </div>
+                           <div className="flex items-center gap-1 text-xs">
+                             <CheckCircle className="w-4 h-4 text-green-500" />
+                             <span>{area.tablesAvailable}</span>
+                             <XCircle className="w-4 h-4 text-red-500 ml-2" />
+                             <span>{area.tablesOccupied}</span>
+                           </div>
+                         </div>
+                       </div>
                     </div>
                   );
                 })}

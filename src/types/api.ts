@@ -53,6 +53,9 @@ export interface Section {
   name: string;
   description: string;
   isActive: boolean;
+  totalTables: string;
+  tablesOccupied: number;
+  tablesAvailable: number;
 }
 
 export interface DiningTable {
