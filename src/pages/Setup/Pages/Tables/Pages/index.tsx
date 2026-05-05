@@ -95,6 +95,7 @@ export default function TablesPage() {
     servingSize: "all",
   });
   const { data: sectionsResponse } = useSections(true); // Always load sections
+  const { data: diningTablesResponse } = useDiningTables(activeTab === "tables" || activeTab === "order-items"); // Only load dining tables when needed
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
@@ -351,7 +352,13 @@ export default function TablesPage() {
                 {areas.map((area) => (
                   <div
                     key={area.id}
-                    onDoubleClick={() => {
+                    onClick={() => {
+                      setAreaFilter(area.name);
+                      setActiveTab("tables");
+                    }}
+                    onDoubleClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setAreaFilter(area.name);
                       setActiveTab("tables");
                     }}
