@@ -303,7 +303,7 @@ export default function MenuSetup() {
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
               placeholder="Search menu items"
-              className="sm:col-span-2 lg:col-span-2"
+              className="lg:col-span-1"
             />
             <select
               value={itemCategoryFilter}
