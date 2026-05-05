@@ -101,6 +101,7 @@ export default function TablesPage() {
     section__name: areaFilter || undefined,
     is_occupied: occupiedFilter === "all" ? undefined : occupiedFilter === "occupied" ? true : false
   } : undefined;
+  console.log('diningTablesParams:', diningTablesParams, 'areaFilter:', areaFilter, 'activeTab:', activeTab);
   const { data: diningTablesResponse } = useDiningTables(sectionsLoaded && (activeTab === "tables" || activeTab === "order-items"), diningTablesParams);
   const tables =
     diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table, areas)) ??

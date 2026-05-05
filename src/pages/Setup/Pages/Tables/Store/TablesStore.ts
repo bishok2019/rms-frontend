@@ -13,6 +13,13 @@ export const sectionQueryKeys = {
   list: () => [...sectionQueryKeys.all, "list"] as const,
   detail: (id: number) => [...sectionQueryKeys.all, "detail", id] as const,
 };
+
+export const diningTableQueryKeys = {
+  all: ["dining-table"] as const,
+  list: (params?: { section__name?: string; search?: string; is_occupied?: boolean }) =>
+    [...diningTableQueryKeys.all, "list", params] as const,
+  detail: (id: number) => [...diningTableQueryKeys.all, "detail", id] as const,
+};
 export const useCreateSection = () => {
   const queryClient = useQueryClient();
   return useMutation({
