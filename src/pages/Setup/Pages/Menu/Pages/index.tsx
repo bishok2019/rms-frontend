@@ -139,7 +139,7 @@ export default function MenuSetup() {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-6 min-h-screen">
+    <div className="p-4 md:p-6 space-y-6 h-screen overflow-hidden flex flex-col">
       <div className="sticky top-0 z-10 pb-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
