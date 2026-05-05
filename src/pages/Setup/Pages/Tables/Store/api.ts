@@ -69,7 +69,6 @@ export const getDiningTables = async (params?: {
   search?: string;
   is_occupied?: boolean;
 }) => {
-  console.log('getDiningTables called with params:', params);
   const searchParams = new URLSearchParams();
   if (params?.section__name) searchParams.append("section__name", params.section__name);
   if (params?.search) searchParams.append("search", params.search);
@@ -77,7 +76,6 @@ export const getDiningTables = async (params?: {
 
   const queryString = searchParams.toString();
   const url = `core-app/dining_table/list${queryString ? `?${queryString}` : ""}`;
-  console.log('API URL:', url);
 
   const response = await privateApiInstance
     .get(url)

@@ -62,12 +62,13 @@ const mapDiningTableToRecord = (
   sections: Section[]
 ): TableRecord => ({
   id: String(table.id),
-  tableCode: table.tableNumber,
-  area: sections.find((section) => section.id === table.section)?.name || "",
-  capacity: table.seatingCapacity,
-  isOccupied: table.isOccupied,
-  canTakeMultipleOrder: table.canHaveMultipleOrders,
-  remarks: table.specialRequests || "",
+  tableCode: table.table_number,
+  area: typeof table.section === 'string' ? table.section : sections.find((section) => section.id === table.section)?.name || "",
+  capacity: table.capacity,
+  isOccupied: table.is_occupied,
+  canTakeMultipleOrder: table.can_take_multiple_orders,
+  remarks: table.remarks || "",
+  qrCode: table.qr_code,
 });
 
 export default function TablesPage() {
@@ -100,8 +101,6 @@ export default function TablesPage() {
   const tables =
     diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table, areas)) ??
     [];
-  console.log('diningTablesResponse:', diningTablesResponse);
-  console.log('tables:', tables);
 
   // Set sectionsLoaded when sections are fetched
   useEffect(() => {
