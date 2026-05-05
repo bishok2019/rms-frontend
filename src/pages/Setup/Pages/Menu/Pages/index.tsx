@@ -11,10 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-
-import { Trash2, Edit2, Plus, Edit } from "lucide-react";
+ import { Trash2, Edit2, Plus, Edit } from "lucide-react";
 import { errorFunction } from "@/components/common/Alert";
 import { useCategories, useCreateMenuItem, useMenuItems, useUpdateMenuItem } from "../Store/MenuStores";
 import { useKitchens } from "../../Kitchen/Store/KitchenStores";
@@ -147,14 +144,34 @@ export default function MenuSetup() {
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-secondary">
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="items">Menu Items</TabsTrigger>
-        </TabsList>
+      <div className="flex gap-2 border-b border-border justify-start items-center mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "categories"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Categories
+          </button>
+          <button
+            onClick={() => setActiveTab("items")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === "items"
+                ? "border-b-2 border-primary text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Menu Items
+          </button>
+        </div>
+      </div>
 
         {/* Categories Tab */}
-        <TabsContent value="categories" className="space-y-4">
+        {activeTab === "categories" && (
+        <div className="space-y-4">
           <div className="flex justify-end">
             <Dialog open={openCategory} onOpenChange={setOpenCategory}>
               <DialogTrigger asChild>
@@ -229,10 +246,12 @@ export default function MenuSetup() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+        )}
 
         {/* Menu Items Tab */}
-        <TabsContent value="items" className="space-y-4">
+        {activeTab === "items" && (
+        <div className="space-y-4">
           <div className="flex justify-end">
             <Dialog open={openItem} onOpenChange={setOpenItem}>
               <DialogTrigger asChild>
@@ -328,8 +347,8 @@ export default function MenuSetup() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+        )}
     </div>
   );
 }
