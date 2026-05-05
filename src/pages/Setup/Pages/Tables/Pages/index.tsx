@@ -347,7 +347,7 @@ export default function TablesPage() {
         <div className="space-y-4">
 
           <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 min-h-[600px]">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {areas.map((area) => (
                   <div
