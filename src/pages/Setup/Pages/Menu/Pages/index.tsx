@@ -412,7 +412,7 @@ export default function MenuSetup() {
                   return (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-border p-4 min-h-[120px] bg-background/40 hover:bg-secondary/40 transition-colors relative overflow-hidden"
+                    className="rounded-lg border border-border p-3 min-h-[100px] bg-background/40 hover:bg-secondary/40 transition-colors relative overflow-hidden"
                     style={item.photo ? {
                       backgroundImage: `url(${item.photo})`,
                       backgroundSize: 'cover',
