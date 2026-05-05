@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,8 @@ export default function MenuSetup() {
   const [itemKitchenFilter, setItemKitchenFilter] = useState("all");
   const [itemAvailabilityFilter, setItemAvailabilityFilter] = useState("all");
   const [itemVariantFilter, setItemVariantFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12); // 4 rows × 3 columns
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -137,6 +139,17 @@ export default function MenuSetup() {
 
     return matchesCategory && matchesKitchen && matchesAvailability && matchesVariant && matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredMenuItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMenuItems = filteredMenuItems.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemSearch, itemCategoryFilter, itemKitchenFilter, itemAvailabilityFilter, itemVariantFilter]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 h-screen overflow-hidden flex flex-col">
@@ -285,78 +298,74 @@ export default function MenuSetup() {
         {activeTab === "items" && (
         <div className="space-y-4">
           {/* Filters */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              <Input
-                value={itemSearch}
-                onChange={(e) => setItemSearch(e.target.value)}
-                placeholder="Search menu items"
-                className="md:col-span-2 lg:col-span-3"
-              />
-              <select
-                value={itemCategoryFilter}
-                onChange={(e) => setItemCategoryFilter(e.target.value)}
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              >
-                <option value="all">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.name}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={itemKitchenFilter}
-                onChange={(e) => setItemKitchenFilter(e.target.value)}
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              >
-                <option value="all">All Kitchens</option>
-                {kitchens.map((kitchen) => (
-                  <option key={kitchen.id} value={kitchen.name}>
-                    {kitchen.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <select
-                value={itemAvailabilityFilter}
-                onChange={(e) => setItemAvailabilityFilter(e.target.value)}
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              >
-                <option value="all">All Availability</option>
-                <option value="available">Available</option>
-                <option value="unavailable">Unavailable</option>
-              </select>
-              <select
-                value={itemVariantFilter}
-                onChange={(e) => setItemVariantFilter(e.target.value)}
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              >
-                <option value="all">All Variants</option>
-                <option value="variants">Has Variants</option>
-                <option value="regular">Regular Only</option>
-              </select>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setItemSearch("");
-                  setItemCategoryFilter("all");
-                  setItemKitchenFilter("all");
-                  setItemAvailabilityFilter("all");
-                  setItemVariantFilter("all");
-                }}
-                className="h-10"
-              >
-                Clear Filters
-              </Button>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Input
+              value={itemSearch}
+              onChange={(e) => setItemSearch(e.target.value)}
+              placeholder="Search menu items"
+              className="sm:col-span-2 lg:col-span-2"
+            />
+            <select
+              value={itemCategoryFilter}
+              onChange={(e) => setItemCategoryFilter(e.target.value)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={itemKitchenFilter}
+              onChange={(e) => setItemKitchenFilter(e.target.value)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All Kitchens</option>
+              {kitchens.map((kitchen) => (
+                <option key={kitchen.id} value={kitchen.name}>
+                  {kitchen.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={itemAvailabilityFilter}
+              onChange={(e) => setItemAvailabilityFilter(e.target.value)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All Availability</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+            <select
+              value={itemVariantFilter}
+              onChange={(e) => setItemVariantFilter(e.target.value)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All Variants</option>
+              <option value="variants">Has Variants</option>
+              <option value="regular">Regular Only</option>
+            </select>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setItemSearch("");
+                setItemCategoryFilter("all");
+                setItemKitchenFilter("all");
+                setItemAvailabilityFilter("all");
+                setItemVariantFilter("all");
+              }}
+              className="h-10"
+            >
+              Clear Filters
+            </Button>
           </div>
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="min-h-[528px] max-h-[528px] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredMenuItems.map((item) => {
+                {paginatedMenuItems.map((item) => {
                   return (
                   <div
                     key={item.id}
@@ -417,6 +426,36 @@ export default function MenuSetup() {
                   );
                 })}
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredMenuItems.length)} of {filteredMenuItems.length} items
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
