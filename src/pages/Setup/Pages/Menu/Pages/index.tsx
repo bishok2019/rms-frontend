@@ -256,7 +256,7 @@ export default function MenuSetup() {
 
             <Card className="bg-card border-border">
               <CardContent className="p-6">
-              <div className="min-h-[580px] max-h-[580px] overflow-y-auto">
+              <div className="min-h-[650px] max-h-[650px] overflow-y-auto">
                  <p className="text-sm text-muted-foreground mb-4">
                    Double-click any category card to open Menu Items filtered by that category.
                  </p>
@@ -414,7 +414,7 @@ export default function MenuSetup() {
 
           <Card className="bg-card border-border">
             <CardContent className="p-6">
-                <div className="min-h-[580px] max-h-[580px] overflow-y-auto">
+                <div className="min-h-[650px] max-h-[650px] overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {paginatedMenuItems.map((item) => {
                     return (
