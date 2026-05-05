@@ -51,9 +51,9 @@ export default function MenuSetup() {
   const [itemAvailabilityFilter, setItemAvailabilityFilter] = useState("all");
   const [itemVariantFilter, setItemVariantFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12); // 4 rows × 3 columns
+  const [itemsPerPage] = useState(24); // 4 rows × 6 columns
   const [categoryPage, setCategoryPage] = useState(1);
-  const [categoriesPerPage] = useState(12); // 4 rows × 3 columns
+  const [categoriesPerPage] = useState(24); // 4 rows × 6 columns
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -259,7 +259,7 @@ export default function MenuSetup() {
                <p className="text-sm text-muted-foreground mb-4">
                  Double-click any category card to open Menu Items filtered by that category.
                </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                 {paginatedCategories.map((category) => {
                   const count = category.totalMenuItems || 0;
 
@@ -407,7 +407,7 @@ export default function MenuSetup() {
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="min-h-[528px] max-h-[528px] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                 {paginatedMenuItems.map((item) => {
                   return (
                   <div
