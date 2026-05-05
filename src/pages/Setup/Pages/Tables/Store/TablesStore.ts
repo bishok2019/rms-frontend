@@ -85,10 +85,13 @@ export const useUpdateDiningTable = () => {
   });
 };
 
-export const useDiningTables = (enabled: boolean = true) => {
+export const useDiningTables = (
+  enabled: boolean = true,
+  params?: { section__name?: string; search?: string; is_occupied?: boolean }
+) => {
   return useQuery({
-    queryKey: diningTableQueryKeys.list(),
-    queryFn: () => getDiningTables(),
+    queryKey: diningTableQueryKeys.list(params),
+    queryFn: () => getDiningTables(params),
     enabled,
   });
 };
