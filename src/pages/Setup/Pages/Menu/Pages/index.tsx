@@ -284,6 +284,74 @@ export default function MenuSetup() {
         {/* Menu Items Tab */}
         {activeTab === "items" && (
         <div className="space-y-4">
+          {/* Filters */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <Input
+                value={itemSearch}
+                onChange={(e) => setItemSearch(e.target.value)}
+                placeholder="Search menu items"
+                className="md:col-span-2 lg:col-span-3"
+              />
+              <select
+                value={itemCategoryFilter}
+                onChange={(e) => setItemCategoryFilter(e.target.value)}
+                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option value="all">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={itemKitchenFilter}
+                onChange={(e) => setItemKitchenFilter(e.target.value)}
+                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option value="all">All Kitchens</option>
+                {kitchens.map((kitchen) => (
+                  <option key={kitchen.id} value={kitchen.name}>
+                    {kitchen.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <select
+                value={itemAvailabilityFilter}
+                onChange={(e) => setItemAvailabilityFilter(e.target.value)}
+                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option value="all">All Availability</option>
+                <option value="available">Available</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+              <select
+                value={itemVariantFilter}
+                onChange={(e) => setItemVariantFilter(e.target.value)}
+                className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              >
+                <option value="all">All Variants</option>
+                <option value="variants">Has Variants</option>
+                <option value="regular">Regular Only</option>
+              </select>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setItemSearch("");
+                  setItemCategoryFilter("all");
+                  setItemKitchenFilter("all");
+                  setItemAvailabilityFilter("all");
+                  setItemVariantFilter("all");
+                }}
+                className="h-10"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="min-h-[528px] max-h-[528px] overflow-y-auto">
