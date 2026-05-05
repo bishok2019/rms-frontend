@@ -97,15 +97,11 @@ export default function TablesPage() {
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
-  const diningTablesParams = (activeTab === "tables") ? {
-    section__name: areaFilter || undefined,
-    is_occupied: occupiedFilter === "all" ? undefined : occupiedFilter === "occupied" ? true : false
-  } : undefined;
-  console.log('diningTablesParams:', diningTablesParams, 'areaFilter:', areaFilter, 'activeTab:', activeTab);
-  const { data: diningTablesResponse } = useDiningTables(sectionsLoaded && (activeTab === "tables" || activeTab === "order-items"), diningTablesParams);
   const tables =
     diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table, areas)) ??
     [];
+  console.log('diningTablesResponse:', diningTablesResponse);
+  console.log('tables:', tables);
 
   // Set sectionsLoaded when sections are fetched
   useEffect(() => {
@@ -126,6 +122,7 @@ export default function TablesPage() {
       table.area.toLowerCase().includes(tableSearch.toLowerCase());
     return matchesArea && matchesOccupied && matchesSearch;
   });
+  console.log('filteredTables:', filteredTables, 'areaFilter:', areaFilter, 'occupiedFilter:', occupiedFilter);
 
   const handleEditTable = (table: TableRecord) => {
     setSelectedTable(table);
