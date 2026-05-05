@@ -144,7 +144,7 @@ export default function MenuSetup() {
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
 
-      <div className="flex gap-2 border-b border-border justify-start items-center mb-6">
+      <div className="flex gap-2 border-b border-border justify-between items-center mb-6">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("categories")}
@@ -167,16 +167,14 @@ export default function MenuSetup() {
             Menu Items
           </button>
         </div>
-      </div>
 
-        {/* Categories Tab */}
-        {activeTab === "categories" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
+        {/* Add buttons aligned with navigation */}
+        <div className="flex">
+          {activeTab === "categories" && (
             <Dialog open={openCategory} onOpenChange={setOpenCategory}>
               <DialogTrigger asChild>
                 <Button
-                  className="bg-primary text-primary-foreground w-full md:w-auto"
+                  className="bg-primary text-primary-foreground"
                   onClick={() => {
                     setEditingCategoryId(null);
                   }}
@@ -194,7 +192,41 @@ export default function MenuSetup() {
                 />
               </DialogContent>
             </Dialog>
-          </div>
+          )}
+          {activeTab === "items" && (
+            <Dialog open={openItem} onOpenChange={setOpenItem}>
+              <DialogTrigger asChild>
+                <Button
+                  className="bg-primary text-primary-foreground"
+                  onClick={() => {
+                    setEditingItemId(null);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-full sm:max-w-lg bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingItemId ? "Edit Menu Item" : "Add New Menu Item"}
+                  </DialogTitle>
+                </DialogHeader>
+                <CreateItem
+                  item={editingItemId ? menuItems.find(mi => mi.id === editingItemId) : undefined}
+                  onSubmit={handleAddItem}
+                  closeRef={closeRef}
+                  categories={categories}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
+
+        {/* Categories Tab */}
+        {activeTab === "categories" && (
+        <div className="space-y-4">
 
             <Card className="bg-card border-border overflow-hidden">
               <CardContent className="pt-6 min-h-[528px] max-h-[528px] overflow-y-auto">
@@ -252,34 +284,6 @@ export default function MenuSetup() {
         {/* Menu Items Tab */}
         {activeTab === "items" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={openItem} onOpenChange={setOpenItem}>
-              <DialogTrigger asChild>
-                <Button
-                  className="bg-primary text-primary-foreground w-full md:w-auto"
-                  onClick={() => {
-                    setEditingItemId(null);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-full sm:max-w-lg bg-card border-border">
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingItemId ? "Edit Menu Item" : "Add New Menu Item"}
-                  </DialogTitle>
-                </DialogHeader>
-    <CreateItem
-      item={editingItemId ? menuItems.find(mi => mi.id === editingItemId) : undefined}
-      onSubmit={handleAddItem}
-      closeRef={closeRef}
-      categories={categories}
-    />
-              </DialogContent>
-            </Dialog>
-          </div>
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="min-h-[528px] max-h-[528px] overflow-y-auto">
