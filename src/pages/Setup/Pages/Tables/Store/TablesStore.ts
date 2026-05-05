@@ -58,11 +58,6 @@ export const useUpdateSection = () => {
   });
 };
 
-export const diningTableQueryKeys = {
-  all: ["dining-tables"] as const,
-  list: () => [...diningTableQueryKeys.all, "list"] as const,
-};
-
 export const useCreateDiningTable = () => {
   const queryClient = useQueryClient();
   return useMutation({
