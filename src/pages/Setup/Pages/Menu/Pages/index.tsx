@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
- import { Trash2, Edit2, Plus, Edit } from "lucide-react";
+import { Trash2, Edit2, Plus, Edit, Grid3x3 } from "lucide-react";
 import { errorFunction } from "@/components/common/Alert";
 import { useCategories, useCreateMenuItem, useMenuItems, useUpdateMenuItem } from "../Store/MenuStores";
 import { useKitchens } from "../../Kitchen/Store/KitchenStores";
