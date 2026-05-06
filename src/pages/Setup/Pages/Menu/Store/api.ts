@@ -1,10 +1,18 @@
 import { privateApiInstance } from "@/Utils/ky";
 import type { ApiResponse, MenuCategory, MenuItem, PaginatedApiResponse } from "@/types/api";
 
-export const createCategory = (body: unknown) =>
-  privateApiInstance
-    .post("core-app/menu/create", { json: body })
+export const createCategory = (body: unknown) => {
+  const options =
+    body instanceof FormData
+      ? { body }
+      : {
+          json: body,
+        };
+
+  return privateApiInstance
+    .post("core-app/menu/create", options)
     .json<ApiResponse<MenuCategory>>();
+};
 
 export const getCategories = async () => {
   const response = await privateApiInstance
@@ -13,10 +21,18 @@ export const getCategories = async () => {
   return response;
 };
 
-export const updateCategory = (id: number, body: unknown) =>
-  privateApiInstance
-    .patch(`core-app/menu/update/${id}`, { json: body })
+export const updateCategory = (id: number, body: unknown) => {
+  const options =
+    body instanceof FormData
+      ? { body }
+      : {
+          json: body,
+        };
+
+  return privateApiInstance
+    .patch(`core-app/menu/update/${id}`, options)
     .json<ApiResponse<MenuCategory>>();
+};
 
 export const createMenuItem = (body: unknown) => {
   const options =

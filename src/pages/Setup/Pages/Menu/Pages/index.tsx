@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,12 +11,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Trash2, Edit2, Plus, Edit, Grid3x3 } from "lucide-react";
+import { Plus, Edit, Edit2 } from "lucide-react";
 import { errorFunction } from "@/components/common/Alert";
 import { useCategories, useCreateMenuItem, useMenuItems, useUpdateMenuItem } from "../Store/MenuStores";
 import { useKitchens } from "../../Kitchen/Store/KitchenStores";
+import { Card, CardContent } from "@/components/ui/card";
 import CreateCategory from "./CreateCategory";
 import CreateItem from "./CreateItem";
+import MenuCategoryDashboard from "@/components/MenuCategoryDashboard";
 import type { MenuCategory, MenuItem } from "@/types/api";
 
 const resolveNamedField = (value: MenuItem["category"] | MenuItem["kitchen"]): string => {
@@ -52,8 +54,6 @@ export default function MenuSetup() {
   const [itemVariantFilter, setItemVariantFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(24); // 4 rows × 6 columns
-  const [categoryPage, setCategoryPage] = useState(1);
-  const [categoriesPerPage] = useState(24); // 4 rows × 6 columns
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -87,11 +87,26 @@ export default function MenuSetup() {
     setOpenCategory(true);
   };
 
-  const handleDeleteCategory = (id: number) => {
-    errorFunction(
-      `Delete category (id: ${id}) is not implemented yet. Please connect delete API first.`
-    );
+
+
+  const sendPrompt = (message: string) => {
+    if (message.startsWith('Show menu items in ')) {
+      const categoryName = message.replace('Show menu items in ', '');
+      const category = categories.find(cat => cat.name === categoryName);
+      if (category) {
+        setItemCategoryFilter(category.name);
+        setActiveTab("items");
+      }
+    } else if (message.startsWith('Edit the ')) {
+      const categoryName = message.replace('Edit the ', '').replace(' category', '');
+      const category = categories.find(cat => cat.name === categoryName);
+      if (category) {
+        handleEditCategory(category);
+      }
+    }
   };
+
+
 
   // Menu item handlers
   const handleAddItem = (formData: Partial<MenuItem> | FormData) => {
@@ -148,51 +163,43 @@ export default function MenuSetup() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedMenuItems = filteredMenuItems.slice(startIndex, endIndex);
 
-  // Categories Pagination logic
-  const totalCategoryPages = Math.ceil(categories.length / categoriesPerPage);
-  const categoryStartIndex = (categoryPage - 1) * categoriesPerPage;
-  const categoryEndIndex = categoryStartIndex + categoriesPerPage;
-  const paginatedCategories = categories.slice(categoryStartIndex, categoryEndIndex);
+
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [itemSearch, itemCategoryFilter, itemKitchenFilter, itemAvailabilityFilter, itemVariantFilter]);
 
-  // Reset category page when switching tabs
-  useEffect(() => {
-    setCategoryPage(1);
-  }, [activeTab]);
-
   return (
-    <div className="p-4 md:p-6 space-y-6 h-screen overflow-hidden flex flex-col">
-      <div className="sticky top-0 z-10 pb-4 mb-6">
+    <div className="p-4 md:p-6 h-screen overflow-hidden flex flex-col">
+      <div className="sticky top-0 z-10 pb-4 mb-6 bg-background">
         <h1 className="text-2xl md:text-3xl font-bold">Menu Setup</h1>
       </div>
 
-      <div className="flex gap-2 border-b border-border justify-between items-center mb-6">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("categories")}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "categories"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Categories
-          </button>
-          <button
-            onClick={() => setActiveTab("items")}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "items"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Menu Items
-          </button>
-        </div>
+      <div className="sticky top-[4.5rem] z-10 bg-background border-b border-border mb-6">
+        <div className="flex gap-2 justify-between items-center py-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab("categories")}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === "categories"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Categories
+            </button>
+            <button
+              onClick={() => setActiveTab("items")}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === "items"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Menu Items
+            </button>
+          </div>
 
         {/* Add buttons aligned with navigation */}
         <div className="flex">
@@ -247,101 +254,17 @@ export default function MenuSetup() {
               </DialogContent>
             </Dialog>
           )}
+          </div>
         </div>
       </div>
 
+      <div className="flex-1 overflow-y-auto">
         {/* Categories Tab */}
         {activeTab === "categories" && (
-        <div className="space-y-4">
-
-            <Card className="bg-card border-border">
-              <CardContent className="p-6">
-              <div className="min-h-[650px] max-h-[650px] overflow-y-auto">
-                 <p className="text-sm text-muted-foreground mb-4">
-                   Double-click any category card to open Menu Items filtered by that category.
-                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-                  {paginatedCategories.map((category) => {
-                    const count = category.totalMenuItems || 0;
-
-                    return (
-                      <div
-                        key={category.id}
-                        onDoubleClick={() => {
-                          setItemCategoryFilter(category.name);
-                          setActiveTab("items");
-                        }}
-                        className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Grid3x3 className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-foreground">{category.name}</h3>
-                              <p className="text-xs text-primary mt-1">{count} item{count === 1 ? "" : "s"}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditCategory(category)}
-                              className="text-muted-foreground hover:text-foreground"
-
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteCategory(category.id)}
-                              className="text-muted-foreground hover:text-destructive"
-
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                </div>
-
-                {/* Categories Pagination Controls - Outside scrollable area */}
-                {totalCategoryPages > 1 && (
-                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-                    <div className="text-sm text-muted-foreground">
-                      Showing {categoryStartIndex + 1}-{Math.min(categoryEndIndex, categories.length)} of {categories.length} categories
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCategoryPage(prev => Math.max(prev - 1, 1))}
-                        disabled={categoryPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-sm">
-                        Page {categoryPage} of {totalCategoryPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCategoryPage(prev => Math.min(prev + 1, totalCategoryPages))}
-                        disabled={categoryPage === totalCategoryPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-        </div>
+          <MenuCategoryDashboard
+            categories={categories}
+            sendPrompt={sendPrompt}
+          />
         )}
 
         {/* Menu Items Tab */}
@@ -512,6 +435,7 @@ export default function MenuSetup() {
           </Card>
         </div>
         )}
+      </div>
     </div>
   );
 }

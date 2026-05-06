@@ -74,6 +74,7 @@ export interface MenuCategory {
   description: string;
   isActive: boolean;
   totalMenuItems: number;
+  photo?: string;
 }
 
 export interface NamedRelation {
