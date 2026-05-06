@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Trash2, Plus, Grid3x3, Loader2, ChefHat, CheckCircle, XCircle } from "lucide-react";
+import { Edit, Trash2, Plus, Grid3x3, Loader2, ChefHat } from "lucide-react";
+import TableAreaDashboard from "@/components/TableAreaDashboard";
 import {
   Select,
   SelectContent,
@@ -77,7 +78,7 @@ export default function TablesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"areas" | "tables" | "order-items">("areas");
-  const [sectionsLoaded, setSectionsLoaded] = useState(false);
+
   const [tableSearch, setTableSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "occupied" | "vacant">(
@@ -103,12 +104,7 @@ export default function TablesPage() {
     diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table, areas)) ??
     [];
 
-  // Set sectionsLoaded when sections are fetched
-  useEffect(() => {
-    if (sectionsResponse) {
-      setSectionsLoaded(true);
-    }
-  }, [sectionsResponse]);
+
 
   const filteredTables = tables.filter((table) => {
     const matchesArea = areaFilter === "" || table.area === areaFilter;
@@ -231,13 +227,32 @@ export default function TablesPage() {
     setIsModalOpen(false);
     setSelectedTable(null);
   };
+
+  const sendPrompt = (message: string) => {
+    if (message.startsWith('Show tables in ')) {
+      const areaName = message.replace('Show tables in ', '').replace(' area', '');
+      const area = areas.find(a => a.name === areaName);
+      if (area) {
+        setAreaFilter(area.name);
+        setActiveTab("tables");
+      }
+    } else if (message.startsWith('Edit the ')) {
+      const areaName = message.replace('Edit the ', '').replace(' area', '');
+      const area = areas.find(a => a.name === areaName);
+      if (area) {
+        setSelectedArea(area);
+        setIsAreaSheetOpen(true);
+      }
+    }
+  };
   return (
-    <div className="p-4 md:p-6 space-y-6 min-h-screen">
-      <div className="sticky top-0 z-10 pb-4 mb-6">
+    <div className="p-4 md:p-6 h-screen overflow-hidden flex flex-col">
+      <div className="sticky top-0 z-10 pb-4 mb-6 bg-background">
         <h1 className="text-2xl md:text-3xl font-bold">Tables & Areas</h1>
       </div>
 
-      <div className="flex gap-2 border-b border-border justify-between items-center">
+      <div className="sticky top-[4.5rem] z-10 bg-background border-b border-border mb-6">
+        <div className="flex gap-2 justify-between items-center py-2">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("areas")}
@@ -339,87 +354,17 @@ export default function TablesPage() {
               </DialogContent>
             </Dialog>
           )}
+          </div>
         </div>
       </div>
 
-      {/* Areas Tab */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Areas Tab */}
       {activeTab === "areas" && (
-        <div className="space-y-4">
-
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6 min-h-[528px] max-h-[528px] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {areas.map((area) => (
-                  <div
-                    key={area.id}
-                    onClick={() => {
-                      setAreaFilter(area.name);
-                      setActiveTab("tables");
-                    }}
-                    onDoubleClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setAreaFilter(area.name);
-                      setActiveTab("tables");
-                    }}
-                    className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer min-h-[120px]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Grid3x3 className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">{area.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {area.description}
-                          </p>
-                          <p className="text-xs text-primary mt-1">
-                            Total: {area.totalTables} table{parseInt(area.totalTables) === 1 ? "" : "s"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedArea(area);
-                              setIsAreaSheetOpen(true);
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span>{area.tablesAvailable}</span>
-                          <XCircle className="w-4 h-4 text-red-500 ml-2" />
-                          <span>{area.tablesOccupied}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {areas.length === 0 && (
-                <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                  No areas found. Create one to get started.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <TableAreaDashboard
+          sections={areas}
+          sendPrompt={sendPrompt}
+        />
       )}
 
       {/* Tables Tab */}
@@ -855,6 +800,7 @@ export default function TablesPage() {
           onSave={handleSaveTable}
         />
       )}
+      </div>
     </div>
   );
 }
