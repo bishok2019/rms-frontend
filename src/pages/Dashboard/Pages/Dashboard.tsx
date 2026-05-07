@@ -42,7 +42,9 @@ interface RecentOrder extends Order {
 }
 
 export const DashboardPage = () => {
+  console.log('DashboardPage: Component rendering');
   const user = useAuthenticationStore((state) => state.user);
+  console.log('DashboardPage: User:', user);
   const [stats, setStats] = useState<DashboardStats>({
     orders: { total: 0, pending: 0, completed: 0, todayRevenue: 0 },
     tables: { total: 0, occupied: 0, available: 0 },
@@ -52,12 +54,14 @@ export const DashboardPage = () => {
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [recentTables, setRecentTables] = useState<DiningTable[]>([]);
   const [loading, setLoading] = useState(true);
+  console.log('DashboardPage: Initial loading state:', loading);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+    console.log('DashboardPage: Starting fetchDashboardData');
     try {
       setLoading(true);
 
@@ -119,6 +123,9 @@ export const DashboardPage = () => {
       // Get recent tables (first 5)
       const recentTablesData = tables.slice(0, 5);
 
+      console.log('DashboardPage: Setting stats:', { orderStats, tableStats, sectionStats, menuStats });
+      console.log('DashboardPage: Recent orders:', recentOrdersData);
+      console.log('DashboardPage: Recent tables:', recentTablesData);
       setStats({
         orders: orderStats,
         tables: tableStats,
@@ -127,10 +134,12 @@ export const DashboardPage = () => {
       });
       setRecentOrders(recentOrdersData);
       setRecentTables(recentTablesData);
+      console.log('DashboardPage: Data set successfully');
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
+      console.log('DashboardPage: Setting loading to false');
       setLoading(false);
     }
   };
@@ -154,7 +163,9 @@ export const DashboardPage = () => {
       : 'bg-green-100 text-green-800';
   };
 
+  console.log('DashboardPage: Render - loading:', loading, 'stats:', stats, 'recentOrders:', recentOrders.length, 'recentTables:', recentTables.length);
   if (loading) {
+    console.log('DashboardPage: Rendering loading spinner');
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center h-64">
