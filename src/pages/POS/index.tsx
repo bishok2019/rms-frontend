@@ -16,6 +16,8 @@ import useAuthenticationStore from "../../pages/Authentication/Store/authenticat
 import { Lock } from "lucide-react";
 import { privateApiInstance } from "../../Utils/ky";
 import { toast } from "sonner";
+import { getCategories } from "../../pages/Setup/Pages/Menu/Store/api";
+import type { MenuCategory } from "../../types/api";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -295,6 +297,13 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
   const scrollFrameRef = useRef<number | null>(null);
   const pageSize = 50;
 
+  // Fetch categories for filtering
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => getCategories(),
+  });
+  const categories = categoriesData?.data ?? [];
+
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
@@ -335,13 +344,7 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
   const topSpacerHeight = 0; // startRow * MENU_ROW_HEIGHT;
   const bottomSpacerHeight = 0; // Math.max(0, (totalRows - endRow) * MENU_ROW_HEIGHT);
 
-  // Get unique categories
-  const categories = useMemo(() => {
-    if (!allItems.length) return [];
-    return Array.from(
-      new Set(allItems.map(item => typeof item.category === 'object' ? item.category.name : String(item.category)))
-    );
-  }, [allItems]);
+
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -475,19 +478,19 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
               className="pl-10"
             />
           </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id.toString()}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
         </div>
       </div>
 
