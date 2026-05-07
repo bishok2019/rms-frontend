@@ -20,6 +20,7 @@ import { toast } from "sonner";
 interface CartItem extends MenuItem {
   quantity: number;
   selectedVariant?: CustomizationData; // For customization data
+  orderType: OrderType; // Order type for this item
 }
 
 type OrderType = "dine_in" | "delivery" | "pickup";
@@ -114,10 +115,112 @@ function useMenuItemsSearch(searchTerm: string, category: string, page: number =
   });
 }
 
+// Memoized Order Type Selector Component for better performance
+const OrderTypeSelector = memo(function OrderTypeSelector({
+  orderType,
+  onOrderTypeChange
+}: {
+  orderType: OrderType;
+  onOrderTypeChange: (value: OrderType) => void;
+}) {
+  return (
+    <Select value={orderType} onValueChange={onOrderTypeChange}>
+      <SelectTrigger className="h-7 w-24 px-2 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="dine_in">Dine In</SelectItem>
+        <SelectItem value="takeaway">Takeaway</SelectItem>
+        <SelectItem value="delivery">Delivery</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+});
+
 interface MenuItemCardProps {
   item: MenuItem;
   onItemClick: (item: MenuItem) => void;
 }
+
+interface CartItemProps {
+  item: CartItem;
+  onUpdatePrice: (itemId: number, price: number) => void;
+  onUpdateQuantity: (itemId: number, quantity: number) => void;
+  onUpdateOrderType: (itemId: number, orderType: OrderType) => void;
+  onRemoveItem: (itemId: number) => void;
+}
+
+// Memoized Cart Item Component for better performance
+const CartItem = memo(function CartItem({
+  item,
+  onUpdatePrice,
+  onUpdateQuantity,
+  onUpdateOrderType,
+  onRemoveItem
+}: CartItemProps) {
+  return (
+    <div className="p-3 bg-muted rounded-lg">
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <h4 className="font-medium text-sm">{item.name}</h4>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onRemoveItem(item.id)}
+          className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+      <div className="mt-2 space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Rs</span>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={toNumber(item.price)}
+              onChange={(e) => onUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
+              className="h-7 w-18 px-2 text-xs"
+              aria-label={`Price for ${item.name}`}
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onUpdateQuantity(item.id, Math.max(0.1, toNumber(item.quantity, 0.1) - 1))}
+            className="h-7 w-7 p-0"
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <Input
+            type="number"
+            min="0.1"
+            step="0.1"
+            value={toNumber(item.quantity, 0.1)}
+            onChange={(e) => onUpdateQuantity(item.id, parseFloat(e.target.value) || 0.1)}
+            className="h-7 w-20 px-2 text-center text-xs"
+            aria-label={`Quantity for ${item.name}`}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onUpdateQuantity(item.id, toNumber(item.quantity, 0.1) + 1)}
+            className="h-7 w-7 p-0"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+          <OrderTypeSelector
+            orderType={item.orderType}
+            onOrderTypeChange={(value) => onUpdateOrderType(item.id, value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const MenuItemCard = memo(function MenuItemCard({ item, onItemClick }: MenuItemCardProps) {
   const categoryLabel = item.category && typeof item.category === "object" ? item.category.name : "Item";
@@ -554,8 +657,6 @@ function CustomizeModal({
 // Main POS Page Component
 const Sidebar = memo(function Sidebar({
   cart,
-  orderType,
-  setOrderType,
   selectedTable,
   setSelectedTable,
   selectedSection,
@@ -564,6 +665,7 @@ const Sidebar = memo(function Sidebar({
   isLoadingTables,
   onUpdateQuantity,
   onUpdatePrice,
+  onUpdateOrderType,
   onConfirmOrder,
   onClearAll,
   onRemoveItem,
@@ -572,8 +674,6 @@ const Sidebar = memo(function Sidebar({
   isTableSelectOpen
 }: {
   cart: CartItem[];
-  orderType: OrderType;
-  setOrderType: (type: OrderType) => void;
   selectedTable: string;
   setSelectedTable: (table: string) => void;
   selectedSection: string;
@@ -582,6 +682,7 @@ const Sidebar = memo(function Sidebar({
   isLoadingTables: boolean;
   onUpdateQuantity: (itemId: number, quantity: number) => void;
   onUpdatePrice: (itemId: number, price: number) => void;
+  onUpdateOrderType: (itemId: number, orderType: OrderType) => void;
   onConfirmOrder: () => void;
   onClearAll: () => void;
   onRemoveItem: (itemId: number) => void;
@@ -601,27 +702,7 @@ const Sidebar = memo(function Sidebar({
 
   return (
     <div className="w-96 bg-card border-l flex flex-col">
-      {/* Order Type Selection */}
-      <div className="p-4 border-b">
-        <h2 className="font-semibold mb-3">Order Type</h2>
-        <div className="flex gap-2">
-          {[
-            { value: "dine_in", label: "Dine In" },
-            { value: "delivery", label: "Delivery" },
-            { value: "pickup", label: "Pickup" },
-          ].map((type) => (
-            <Button
-              key={type.value}
-              variant={orderType === type.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setOrderType(type.value as OrderType)}
-              className="flex-1"
-            >
-              {type.label}
-            </Button>
-          ))}
-        </div>
-      </div>
+
 
       {/* Table Assignment */}
       <div className="grid grid-cols-2 gap-3 p-4 border-b">
@@ -687,58 +768,14 @@ const Sidebar = memo(function Sidebar({
         ) : (
           <div className="space-y-3">
             {cart.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-medium text-sm">{item.name}</h4>
-                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <span>Rs</span>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={toNumber(item.price)}
-                      onChange={(e) => onUpdatePrice(item.id, parseFloat(e.target.value) || 0)}
-                      className="h-7 w-24 px-2 text-xs"
-                      aria-label={`Price for ${item.name}`}
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onUpdateQuantity(item.id, Math.max(0.1, toNumber(item.quantity, 0.1) - 0.1))}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <Input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={toNumber(item.quantity, 0.1)}
-                    onChange={(e) => onUpdateQuantity(item.id, parseFloat(e.target.value) || 0.1)}
-                    className="h-7 w-20 px-2 text-center text-xs"
-                    aria-label={`Quantity for ${item.name}`}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onUpdateQuantity(item.id, toNumber(item.quantity, 0.1) + 0.1)}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onRemoveItem(item.id)}
-                    className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
+              <CartItem
+                key={item.id}
+                item={item}
+                onUpdatePrice={onUpdatePrice}
+                onUpdateQuantity={onUpdateQuantity}
+                onUpdateOrderType={onUpdateOrderType}
+                onRemoveItem={onRemoveItem}
+              />
             ))}
           </div>
         )}
@@ -778,7 +815,6 @@ const Sidebar = memo(function Sidebar({
 export default function POSPage() {
   const { isAuthenticated } = useAuthenticationStore();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orderType, setOrderType] = useState<OrderType>("delivery");
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("all");
 
@@ -824,7 +860,7 @@ export default function POSPage() {
             : cartItem
         );
       }
-      return [...prev, { ...item, quantity, selectedVariant: customData }];
+      return [...prev, { ...item, quantity, selectedVariant: customData, orderType: "dine_in" }];
     });
   }, []);
 
@@ -859,6 +895,12 @@ export default function POSPage() {
     ));
   }, []);
 
+  const updateOrderType = useCallback((itemId: number, newOrderType: OrderType) => {
+    setCart(prev => prev.map(item =>
+      item.id === itemId ? { ...item, orderType: newOrderType } : item
+    ));
+  }, []);
+
   const clearAllItems = useCallback(() => {
     setCart([]);
     toast.success("All items cleared from cart");
@@ -875,7 +917,8 @@ export default function POSPage() {
       return;
     }
 
-    if (orderType === "dine_in" && !selectedTable) {
+    const hasDineInItems = cart.some(item => item.orderType === "dine_in");
+    if (hasDineInItems && !selectedTable) {
       toast.error("Please select a table for dine-in orders");
       return;
     }
@@ -889,10 +932,7 @@ export default function POSPage() {
       // Calculate subtotal
       const subtotal = cart.reduce((sum, item) => sum + (toNumber(item.price) * toNumber(item.quantity)), 0);
 
-      const mappedOrderType = (
-        orderType === "dine_in" ? "dine_in" :
-        orderType === "delivery" ? "delivery" : "takeaway"
-      ) as "dine_in" | "delivery" | "takeaway";
+
 
       // Prepare order data with nested order items, matching OrderCreateRequest.
       const orderData = {
@@ -901,7 +941,7 @@ export default function POSPage() {
           orderItem: cartItem.id,
           quantity: toNumber(cartItem.quantity).toFixed(2),
           price: toNumber(cartItem.price).toFixed(2),
-          orderType: mappedOrderType,
+          orderType: cartItem.orderType,
           dietaryType: "veg" as const,
           spiceLevel: "none" as const,
           servingSize: cartItem.selectedVariant?.size || "Medium",
@@ -914,7 +954,7 @@ export default function POSPage() {
         subtotal: subtotal.toFixed(2),
         taxAmount: "0.00", // Default tax - could be calculated based on business rules
         discountAmount: "0.00", // Default discount - could be applied based on promotions
-        deliveryCharge: orderType === "delivery" ? "5.00" : "0.00", // Default delivery charge
+        deliveryCharge: cart.some(item => item.orderType === "delivery") ? "5.00" : "0.00", // Default delivery charge
         customer: null as null, // No customer selected in POS
         diningTable: selectedTable ? parseInt(selectedTable, 10) : null,
         servedBy: null as null, // Could be set to current user if available
@@ -949,7 +989,7 @@ export default function POSPage() {
     } finally {
       setIsCreatingOrder(false);
     }
-  }, [cart, orderType, selectedTable]);
+  }, [cart, selectedTable]);
 
   if (!isAuthenticated) {
     return (
@@ -970,8 +1010,6 @@ export default function POSPage() {
       <MenuGrid onItemClick={handleItemClick} />
       <Sidebar
         cart={cart}
-        orderType={orderType}
-        setOrderType={setOrderType}
         selectedTable={selectedTable}
         setSelectedTable={setSelectedTable}
         selectedSection={selectedSection}
@@ -980,6 +1018,7 @@ export default function POSPage() {
         isLoadingTables={isLoadingTables}
         onUpdateQuantity={updateQuantity}
         onUpdatePrice={updatePrice}
+        onUpdateOrderType={updateOrderType}
         onConfirmOrder={handleConfirmOrder}
         onClearAll={clearAllItems}
         onRemoveItem={removeItem}
