@@ -602,9 +602,9 @@ function CustomizeModal({
                 size="icon"
                 onClick={() => setCustomizationData({
                   ...customizationData,
-                  quantity: Math.max(0.1, customizationData.quantity - 0.1)
+                  quantity: Math.max(1, customizationData.quantity - 1)
                 })}
-                disabled={customizationData.quantity <= 0.1}
+                disabled={customizationData.quantity <= 1}
               >
                 <Minus className="h-4 w-4" />
               </Button>
@@ -616,7 +616,7 @@ function CustomizeModal({
                 size="icon"
                 onClick={() => setCustomizationData({
                   ...customizationData,
-                  quantity: customizationData.quantity + 0.1
+                  quantity: customizationData.quantity + 1
                 })}
               >
                 <Plus className="h-4 w-4" />
@@ -823,7 +823,7 @@ export default function POSPage() {
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [customizationData, setCustomizationData] = useState<CustomizationData>({
     size: "Medium",
-        quantity: 0.1,
+        quantity: 1,
     specialRequests: "",
   });
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -870,7 +870,7 @@ export default function POSPage() {
       setCustomizingItem(item);
       setCustomizationData({
         size: "Medium",
-    quantity: 1.0,
+    quantity: 1,
         specialRequests: "",
       });
       setIsCustomizeModalOpen(true);
