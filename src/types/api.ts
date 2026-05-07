@@ -174,6 +174,7 @@ export interface Order {
   customer: Customer | number | null;
   diningTable: number | string | null;
   servedBy: number | string | null;
+  createdBy: number | string | null;
   createdAt?: string;
   totalItems?: number;
   section?: string | null;

@@ -408,8 +408,8 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                  <SelectItem key={category.id} value={category.id.toString()}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -447,8 +447,8 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                  <SelectItem key={category.id} value={category.id.toString()}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>

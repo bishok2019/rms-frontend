@@ -13,33 +13,6 @@ export default function PrivateLayout() {
   if (!sidebar) return null;
   const { getOpenState, settings, toggleOpen } = sidebar;
   return (
-    // <div>
-    //   <SidebarProvider>
-    //   <div className="flex w-full">
-    //     <AppSidebar />
-    //     {/* <Sidebar /> */}
-    //     <main className="flex-1 flex flex-col">
-    //       <div className="px-4 top-bar bg-primary h-8 w-full flex items-center">
-    //         <div className="container mx-auto flex justify-between items-center">
-    //           <div className="text-white text-xs">
-    //             <ClockDisplay />
-    //           </div>
-    //           <div className="flex items-center gap-2">
-    //             <img width={10} src="/assets/nepalflag.png" alt="logo" />
-    //             <div className="text-white text-xs">
-    //               | <a href="tel:+977 01-44111234">+977 01-44111234</a>
-    //             </div>
-    //           </div>
-    //         </div>
-    //       </div>
-    //       <div className="flex-1">
-    //         <Outlet />
-    //       </div>
-    //       <Footer />
-    //     </main>
-    //   </div>
-    //   </SidebarProvider>
-    // </div>
     <>
       <Sidebar />
       <main

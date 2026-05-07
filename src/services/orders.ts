@@ -8,13 +8,25 @@ export const ordersApi = {
     page_size?: number;
     search?: string;
     status?: string;
+    served_by?: string;
+    customer?: string;
+    dining_table?: string;
+    payment_method?: string;
+    payment_status?: string;
+    created_at?: string;
   }): Promise<PaginatedApiResponse<Order>> => {
     console.log("API: getOrders called with params:", params);
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
     if (params?.search) searchParams.append("search", params.search);
-    if (params?.status) searchParams.append("status", params.status);
+    if (params?.status && params.status !== "all") searchParams.append("status", params.status);
+    if (params?.served_by && params.served_by.trim()) searchParams.append("served_by", params.served_by);
+    if (params?.customer && params.customer.trim()) searchParams.append("customer", params.customer);
+    if (params?.dining_table && params.dining_table.trim()) searchParams.append("dining_table", params.dining_table);
+    if (params?.payment_method && params.payment_method !== "all") searchParams.append("payment_method", params.payment_method);
+    if (params?.payment_status && params.payment_status !== "all") searchParams.append("payment_status", params.payment_status);
+    if (params?.created_at) searchParams.append("created_at", params.created_at);
 
     const queryString = searchParams.toString();
     const url = `core-app/orders/list${queryString ? `?${queryString}` : ""}`;

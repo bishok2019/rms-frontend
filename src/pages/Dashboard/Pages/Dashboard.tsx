@@ -177,15 +177,32 @@ export const DashboardPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
-      <div className="sticky top-0 z-10 pb-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 pl-6">
-          Welcome back, {user?.name || user?.username || "there"}! 👋
-        </h2>
-        <p className="text-gray-600">
-          Here's an overview of your restaurant's performance and operations.
-        </p>
-      </div>
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+              <span className="text-2xl mb-2">➕</span>
+              <span className="text-sm font-medium">New Order</span>
+            </button>
+            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+              <span className="text-2xl mb-2">🪑</span>
+              <span className="text-sm font-medium">Add Table</span>
+            </button>
+            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+              <span className="text-2xl mb-2">🍽️</span>
+              <span className="text-sm font-medium">Add Menu Item</span>
+            </button>
+            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+              <span className="text-2xl mb-2">📊</span>
+              <span className="text-sm font-medium">View Reports</span>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -348,33 +365,6 @@ export const DashboardPage = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
-              <span className="text-2xl mb-2">➕</span>
-              <span className="text-sm font-medium">New Order</span>
-            </button>
-            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
-              <span className="text-2xl mb-2">🪑</span>
-              <span className="text-sm font-medium">Add Table</span>
-            </button>
-            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
-              <span className="text-2xl mb-2">🍽️</span>
-              <span className="text-sm font-medium">Add Menu Item</span>
-            </button>
-            <button className="flex flex-col items-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
-              <span className="text-2xl mb-2">📊</span>
-              <span className="text-sm font-medium">View Reports</span>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
