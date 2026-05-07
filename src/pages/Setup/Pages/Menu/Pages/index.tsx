@@ -33,6 +33,18 @@ const resolveNamedField = (value: MenuItem["category"] | MenuItem["kitchen"]): s
   return String(value);
 };
 
+const resolveCategoryId = (category: MenuItem["category"]): string => {
+  if (category == null) {
+    return "";
+  }
+
+  if (typeof category === "object" && "id" in category) {
+    return String(category.id);
+  }
+
+  return String(category);
+};
+
 export default function MenuSetup() {
   const [activeTab, setActiveTab] = useState("categories");
   const { data: categoriesData } = useCategories();
@@ -94,7 +106,7 @@ export default function MenuSetup() {
       const categoryName = message.replace('Show menu items in ', '');
       const category = categories.find(cat => cat.name === categoryName);
       if (category) {
-        setItemCategoryFilter(category.name);
+        setItemCategoryFilter(String(category.id));
         setActiveTab("items");
       }
     } else if (message.startsWith('Edit the ')) {
@@ -131,12 +143,11 @@ export default function MenuSetup() {
   };
 
   const filteredMenuItems = menuItems.filter((item) => {
-    const categoryName = resolveNamedField(item.category);
+    const categoryId = resolveCategoryId(item.category);
     const kitchenName = resolveNamedField(item.kitchen);
     const matchesCategory =
         itemCategoryFilter === "all" ||
-        categoryName.trim().toLowerCase() ===
-          itemCategoryFilter.trim().toLowerCase();
+        categoryId === itemCategoryFilter;
     const matchesKitchen =
         itemKitchenFilter === "all" ||
         kitchenName.trim().toLowerCase() ===
@@ -285,7 +296,7 @@ export default function MenuSetup() {
             >
               <option value="all">All Categories</option>
               {categories.map((category) => (
-                <option key={category.id} value={category.name}>
+                <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
               ))}
