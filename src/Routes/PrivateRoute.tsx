@@ -42,6 +42,7 @@ const PrivateRoutes = () => {
     <Routes>
         <Route element={<PrivateLayout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/setup" element={<SetupPage />} />
           <Route path="/setup/tables" element={<TablesPage />} />
