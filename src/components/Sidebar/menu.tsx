@@ -2,12 +2,9 @@ import { useMemo } from "react";
 import { NavLink } from "react-router";
 import {
   Home,
-  BarChart3,
   Settings,
   Users,
   Table2,
-  FileText,
-  HelpCircle,
   LogOut,
   UtensilsCrossed,
   ChefHat,
@@ -31,24 +28,14 @@ export const menuItems = [
     icon: Home,
     permissions: ["dashboard", "view_dashboard"],
   },
-  {
-    href: "/analytics",
-    label: "Analytics",
-    icon: BarChart3,
-    permissions: ["analytics", "view_analytics"],
-  },
+
   {
     href: "/users",
     label: "Users",
     icon: Users,
     permissions: ["users", "view_user", "view_users"],
   },
-  {
-    href: "/reports",
-    label: "Reports",
-    icon: FileText,
-    permissions: ["reports", "view_reports"],
-  },
+
   {
     href: "/setup/tables",
     label: "Tables",
@@ -73,12 +60,7 @@ export const menuItems = [
     icon: Settings,
     permissions: ["setup", "view_setup"],
   },
-  {
-    href: "/help",
-    label: "Help",
-    icon: HelpCircle,
-    permissions: ["help", "view_help"],
-  },
+
   {
     href: "/api-logs",
     label: "API Logs",
