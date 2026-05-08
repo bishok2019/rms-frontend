@@ -39,7 +39,7 @@ export default function PrivateLayout() {
           onClick={handleToggleSidebar}
           className={cn(
             "fixed left-4 top-4 z-50 shadow-md bg-background/95 backdrop-blur-sm transition-transform ease-in-out duration-300 will-change-transform",
-            getOpenState() && "translate-x-[264px]"
+            getOpenState() && "translate-x-[216px]"
           )}
           aria-label={getOpenState() ? "Hide sidebar" : "Show sidebar"}
         >
@@ -50,6 +50,7 @@ export default function PrivateLayout() {
         className={cn(
           "flex-1 overflow-hidden transition-transform ease-in-out duration-300 relative flex flex-col min-h-0 will-change-transform",
           bgImagesEnabled ? "bg-transparent" : "bg-background",
+          !settings.disabled && !getOpenState() && "pl-14",
           !settings.disabled && getOpenState() && "lg:w-[calc(100%-18rem)] lg:translate-x-72"
         )}
       >

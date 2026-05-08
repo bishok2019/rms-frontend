@@ -2,6 +2,7 @@
 
 import { memo, startTransition, useState, useMemo, useEffect, useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { NavLink } from "react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
@@ -11,10 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Separator } from "../../components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Textarea } from "../../components/ui/textarea";
-import { Search, Settings, Plus, Minus, Receipt, X, Trash2, RefreshCw } from "lucide-react";
+import { ChefHat, Lock, Search, Settings, Plus, Minus, Receipt, Table2, X, Trash2, RefreshCw } from "lucide-react";
 import type { MenuItem, PaginatedApiResponse } from "../../types/api";
 import useAuthenticationStore from "../../pages/Authentication/Store/authenticationStore";
-import { Lock } from "lucide-react";
 import { privateApiInstance } from "../../Utils/ky";
 import { toast } from "sonner";
 import { getCategories } from "../../pages/Setup/Pages/Menu/Store/api";
@@ -779,6 +779,47 @@ const Sidebar = memo(function Sidebar({
   );
 });
 
+const PosNavbar = memo(function PosNavbar() {
+  const navItems = [
+    { label: "Table", to: "/setup/tables", icon: Table2 },
+    { label: "KOT", to: "/setup/kitchen", icon: ChefHat },
+  ];
+
+  return (
+    <div className="border-b bg-card px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold leading-none">POS</h1>
+          <p className="mt-1 text-xs text-muted-foreground">Quick access for table service and kitchen tickets</p>
+        </div>
+        <nav className="flex items-center gap-2" aria-label="POS navigation">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  [
+                    "inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors",
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-foreground hover:bg-muted",
+                  ].join(" ")
+                }
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+      </div>
+    </div>
+  );
+});
+
 // Main POS Page Component
 export default function POSPage() {
   const { isAuthenticated } = useAuthenticationStore();
@@ -990,26 +1031,29 @@ export default function POSPage() {
   }
 
   return (
-    <div className="h-screen flex bg-background">
-      <MenuGrid onItemClick={handleItemClick} />
-      <Sidebar
-        cart={cart}
-        selectedTable={selectedTable}
-        setSelectedTable={setSelectedTable}
-        selectedSection={selectedSection}
-        setSelectedSection={setSelectedSection}
-        tableOptions={tableOptions}
-        isLoadingTables={isLoadingTables}
-        onUpdateQuantity={updateQuantity}
-        onUpdatePrice={updatePrice}
-        onUpdateOrderType={updateOrderType}
-        onConfirmOrder={handleConfirmOrder}
-        onClearAll={clearAllItems}
-        onRemoveItem={removeItem}
-        isCreatingOrder={isCreatingOrder}
-        onRefreshTables={handleRefreshTables}
-        isRefreshingTables={isRefreshingTables}
-      />
+    <div className="h-screen min-h-0 bg-background flex flex-col">
+      <PosNavbar />
+      <div className="flex min-h-0 flex-1">
+        <MenuGrid onItemClick={handleItemClick} />
+        <Sidebar
+          cart={cart}
+          selectedTable={selectedTable}
+          setSelectedTable={setSelectedTable}
+          selectedSection={selectedSection}
+          setSelectedSection={setSelectedSection}
+          tableOptions={tableOptions}
+          isLoadingTables={isLoadingTables}
+          onUpdateQuantity={updateQuantity}
+          onUpdatePrice={updatePrice}
+          onUpdateOrderType={updateOrderType}
+          onConfirmOrder={handleConfirmOrder}
+          onClearAll={clearAllItems}
+          onRemoveItem={removeItem}
+          isCreatingOrder={isCreatingOrder}
+          onRefreshTables={handleRefreshTables}
+          isRefreshingTables={isRefreshingTables}
+        />
+      </div>
       <CustomizeModal
         isOpen={isCustomizeModalOpen}
         onClose={closeCustomizeModal}

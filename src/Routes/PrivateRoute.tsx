@@ -3,7 +3,6 @@ import PrivateLayout from "./PrivateLayout";
 
 
 import { useEffect } from "react";
-import { DashboardPage } from "../pages/Dashboard/Pages/Dashboard";
 import SetupPage from "../pages/Setup/Pages";
 import TablesPage from "../pages/Setup/Pages/Tables/Pages";
 import MembersSetup from "../pages/Setup/Pages/Members/Page";
@@ -15,6 +14,7 @@ import UsersPage from "../pages/Users";
 import ApiLogsPage from "../pages/ApiLogs";
 import OrdersPage from "../pages/Orders";
 import POSPage from "../pages/POS";
+import ReportsPage from "../pages/Reports";
 import RolesPage from "../pages/Roles";
 import PermissionsPage from "../pages/Permissions";
 import EmployeesPage from "../pages/Employees";
@@ -41,8 +41,8 @@ const PrivateRoutes = () => {
   return (
     <Routes>
         <Route element={<PrivateLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/" element={<ReportsPage />} />
+          <Route path="/dashboard" element={<ReportsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/setup" element={<SetupPage />} />
           <Route path="/setup/tables" element={<TablesPage />} />
@@ -55,6 +55,7 @@ const PrivateRoutes = () => {
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/pos" element={<POSPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
         </Route>
