@@ -83,7 +83,7 @@ export const menuItems = [
     href: "/roles",
     label: "Roles",
     icon: UserCheck,
-    permissions: ["admin"], // Temporarily set to admin
+    permissions: ["roles", "role", "view_role", "view_roles"],
   },
   {
     href: "/employees",
@@ -95,7 +95,7 @@ export const menuItems = [
     href: "/permissions",
     label: "Permissions",
     icon: Shield,
-    permissions: ["admin"], // Temporarily set to admin
+    permissions: ["permissions", "permission", "view_permission", "view_permissions"],
   },
 ];
 
