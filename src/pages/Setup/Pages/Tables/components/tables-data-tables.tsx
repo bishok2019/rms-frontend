@@ -157,7 +157,7 @@ export function TablesDataTable({
                 <TableRow
                   key={row.id}
                   className="border-b border-border hover:bg-secondary/50 cursor-pointer"
-                  onClick={() => onEdit(row.original)}
+                  onDoubleClick={() => onEdit(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

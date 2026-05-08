@@ -1,221 +1,551 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Edit2, Grid2X2, List, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Edit2, User } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { privateApiInstance } from "@/Utils/ky";
+import { cn } from "@/lib/utils";
 
 interface Employee {
   id: number;
   user: string;
-  employeeImage: string;
-  kitchenAssigned: null;
+  employeeImage: string | null;
+  kitchenAssigned: string | number | null;
+  position: string;
+  department: string;
+  salary: string | null;
+}
+
+interface EmployeeDetail {
+  id: number;
+  user: number;
+  position: string;
+  department?: string;
+  salary?: string | null;
+  kitchenAssigned?: number | null;
+}
+
+interface ProfileUser {
+  id: number;
+  username: string;
+  fullName: string;
+  email?: string | null;
+}
+
+interface ProfileOption {
+  id: number;
+  user: ProfileUser;
+}
+
+interface EmployeeFormState {
+  userId: string;
   position: string;
   department: string;
   salary: string;
 }
 
-const employeeData: Employee[] = [
-  {
-    id: 10,
-    user: "admin10",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
+type ViewMode = "grid" | "list";
+
+const defaultFormState: EmployeeFormState = {
+  userId: "",
+  position: "",
+  department: "",
+  salary: "",
+};
+
+const departmentStyles: Record<string, string> = {
+  Cleaning: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950 dark:text-teal-200 dark:border-teal-800",
+  Management: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800",
+  Kitchen: "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800",
+  Service: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-800",
+};
+
+const positionStyles: Record<string, string> = {
+  Cleaner: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950 dark:text-teal-200 dark:border-teal-800",
+  Manager: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800",
+  Cook: "bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800",
+  Waiter: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-800",
+};
+
+const extractListData = <T,>(payload: unknown): T[] => {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const response = payload as { data?: unknown; results?: unknown };
+  if (Array.isArray(response.data)) return response.data as T[];
+  if (Array.isArray(response.results)) return response.results as T[];
+  return [];
+};
+
+const extractObjectData = <T,>(payload: unknown): T => {
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return (payload as { data: T }).data;
+  }
+
+  return payload as T;
+};
+
+const getInitials = (name: string) =>
+  name
+    .replace(/[^a-zA-Z0-9 ]/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+const formatSalary = (salary: string | null | undefined) => {
+  const value = Number(salary);
+  return Number.isFinite(value) ? `$${(value / 1000).toFixed(1)}k/yr` : "$0.0k/yr";
+};
+
+const uniqueValues = (employees: Employee[], key: "position" | "department") =>
+  Array.from(new Set(employees.map((employee) => employee[key]).filter(Boolean))).sort();
+
+const getEmployees = async (search: string) => {
+  const params = new URLSearchParams({ limit: "100", ordering: "user" });
+  if (search.trim()) params.set("search", search.trim());
+
+  const response = await privateApiInstance
+    .get(`core-app/employee/list?${params.toString()}`)
+    .json<unknown>();
+
+  return extractListData<Employee>(response);
+};
+
+const getProfileOptions = async () => {
+  const response = await privateApiInstance
+    .get("auth-app/get-all-profile-list?limit=100")
+    .json<unknown>();
+
+  return extractListData<ProfileOption>(response);
+};
+
+const getEmployee = async (id: number) => {
+  const response = await privateApiInstance
+    .get(`core-app/employee/retrieve/${id}`)
+    .json<unknown>();
+
+  return extractObjectData<EmployeeDetail>(response);
+};
+
+const saveEmployee = async ({
+  employeeId,
+  form,
+}: {
+  employeeId: number | null;
+  form: EmployeeFormState;
+}) => {
+  const payload = {
+    user: Number(form.userId),
+    position: form.position.trim(),
+    department: form.department.trim(),
+    salary: form.salary.trim() || null,
     kitchenAssigned: null,
-    position: "Cleaner",
-    department: "Cleaning",
-    salary: "42969.00",
-  },
-  {
-    id: 9,
-    user: "admin9",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Manager",
-    department: "Management",
-    salary: "20562.00",
-  },
-  {
-    id: 8,
-    user: "admin8",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Cook",
-    department: "Cleaning",
-    salary: "49582.00",
-  },
-  {
-    id: 7,
-    user: "admin7",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Cleaner",
-    department: "Management",
-    salary: "43358.00",
-  },
-  {
-    id: 6,
-    user: "admin6",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Cleaner",
-    department: "Cleaning",
-    salary: "46442.00",
-  },
-  {
-    id: 5,
-    user: "admin5",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Waiter",
-    department: "Cleaning",
-    salary: "26248.00",
-  },
-  {
-    id: 4,
-    user: "admin4",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Cook",
-    department: "Cleaning",
-    salary: "47825.00",
-  },
-  {
-    id: 3,
-    user: "admin3",
-    employeeImage: "http://localhost:8001/media/default_images/profile.png",
-    kitchenAssigned: null,
-    position: "Waiter",
-    department: "Service",
-    salary: "20442.00",
-  },
-  {
-    id: 2,
-    user: "bishok",
-    employeeImage: "http://localhost:8001/media/user_image/profile_takPHnT.jpg",
-    kitchenAssigned: null,
-    position: "Manager",
-    department: "Management",
-    salary: "24475.00",
-  },
-  {
-    id: 1,
-    user: "admin",
-    employeeImage: "http://localhost:8001/media/user_image/profile.jpg",
-    kitchenAssigned: null,
-    position: "Cook",
-    department: "Service",
-    salary: "36117.00",
-  },
-];
+  };
+
+  const request = employeeId
+    ? privateApiInstance.patch(`core-app/employee/update/${employeeId}`, { json: payload })
+    : privateApiInstance.post("core-app/employee/create", { json: payload });
+
+  return request.json<unknown>();
+};
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(employeeData);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
+  const [formState, setFormState] = useState<EmployeeFormState>(defaultFormState);
 
-  const filteredEmployees = employees.filter((employee) => {
-    const matchesSearch = employee.user.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPosition = positionFilter === "all" || employee.position === positionFilter;
-    const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
-    return matchesSearch && matchesPosition && matchesDepartment;
+  const { data: employees = [], isLoading, isFetching } = useQuery({
+    queryKey: ["employees", searchQuery],
+    queryFn: () => getEmployees(searchQuery),
   });
 
-  const handleDelete = (id: number) => {
-    setEmployees(employees.filter((e) => e.id !== id));
+  const { data: profileOptions = [], isLoading: isLoadingProfiles } = useQuery({
+    queryKey: ["employee-profile-options"],
+    queryFn: getProfileOptions,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: saveEmployee,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setIsFormOpen(false);
+      setEditingEmployeeId(null);
+      setFormState(defaultFormState);
+      toast.success(editingEmployeeId ? "Employee updated successfully." : "Employee created successfully.");
+    },
+  });
+
+  const positions = useMemo(() => uniqueValues(employees, "position"), [employees]);
+  const departments = useMemo(() => uniqueValues(employees, "department"), [employees]);
+
+  const filteredEmployees = useMemo(
+    () =>
+      employees.filter((employee) => {
+        const matchesPosition = positionFilter === "all" || employee.position === positionFilter;
+        const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter;
+        return matchesPosition && matchesDepartment;
+      }),
+    [departmentFilter, employees, positionFilter]
+  );
+
+  const stats = useMemo(() => {
+    const totalSalary = employees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
+    return [
+      { label: "Total Employees", value: employees.length.toString() },
+      { label: "Average Salary", value: formatSalary(String(totalSalary / Math.max(employees.length, 1))) },
+      { label: "Departments", value: departments.length.toString() },
+      { label: "Positions", value: positions.length.toString() },
+    ];
+  }, [departments.length, employees, positions.length]);
+
+  const openCreateForm = () => {
+    setEditingEmployeeId(null);
+    setFormState(defaultFormState);
+    setIsFormOpen(true);
   };
 
-  const handleEdit = (employee: Employee) => {
-    // Implement edit logic
-    console.log("Edit employee", employee);
+  const openEditForm = async (employee: Employee) => {
+    setEditingEmployeeId(employee.id);
+    setIsFormOpen(true);
+    setFormState({
+      userId: "",
+      position: employee.position,
+      department: employee.department || "",
+      salary: employee.salary || "",
+    });
+
+    try {
+      const detail = await getEmployee(employee.id);
+      setFormState({
+        userId: String(detail.user),
+        position: detail.position,
+        department: detail.department || "",
+        salary: detail.salary || "",
+      });
+    } catch (error) {
+      console.error("Failed to retrieve employee:", error);
+      toast.error("Failed to load employee details.");
+    }
   };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!formState.userId || !formState.position.trim()) {
+      toast.error("User and position are required.");
+      return;
+    }
+
+    saveMutation.mutate({ employeeId: editingEmployeeId, form: formState });
+  };
+
+  const handleDelete = () => {
+    toast.error("Employee delete API is not available in the current docs.");
+  };
+
+  const renderActions = (employee: Employee) => (
+    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => openEditForm(employee)}
+        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+        aria-label={`Edit ${employee.user}`}
+      >
+        <Edit2 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleDelete}
+        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+        aria-label={`Delete ${employee.user}`}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="p-8 space-y-8 min-h-screen h-screen flex flex-col bg-background">
-      <div className="sticky top-0 z-10 pb-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Employee Management</h1>
-          <Button className="bg-primary text-primary-foreground">
-            Add Employee
-          </Button>
+    <div className="flex h-screen min-h-0 flex-col bg-background p-6 text-foreground">
+      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-normal">Employee Management</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage staff records, compensation, and team structure.
+            </p>
+          </div>
+          <Button onClick={openCreateForm}>Add Employee</Button>
         </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <Card key={stat.label} className="gap-2 rounded-md py-4 shadow-none">
+              <CardContent className="max-h-none px-4">
+                <p className="text-xs font-medium uppercase text-muted-foreground">{stat.label}</p>
+                <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="min-h-0 flex-1 gap-0 rounded-md shadow-none">
+          <CardContent className="flex max-h-none min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search employees by name"
+                  className="pl-9 shadow-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:w-auto">
+                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                  <SelectTrigger className="w-full min-w-40 shadow-none">
+                    <SelectValue placeholder="All Positions" />
+                  </SelectTrigger>
+                  <SelectContent className="shadow-none">
+                    <SelectItem value="all">All Positions</SelectItem>
+                    {positions.map((position) => (
+                      <SelectItem key={position} value={position}>
+                        {position}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                  <SelectTrigger className="w-full min-w-40 shadow-none">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent className="shadow-none">
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((department) => (
+                      <SelectItem key={department} value={department}>
+                        {department}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="inline-flex h-9 rounded-md border border-input p-0.5">
+                  <Button
+                    type="button"
+                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    size="icon"
+                    onClick={() => setViewMode("grid")}
+                    className="h-8 w-8"
+                    aria-label="Grid view"
+                  >
+                    <Grid2X2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={viewMode === "list" ? "secondary" : "ghost"}
+                    size="icon"
+                    onClick={() => setViewMode("list")}
+                    className="h-8 w-8"
+                    aria-label="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex flex-1 items-center justify-center rounded-md border border-dashed p-8 text-sm text-muted-foreground">
+                Loading employees...
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {filteredEmployees.map((employee) => (
+                  <Card key={employee.id} className="group rounded-md py-0 shadow-none">
+                    <CardContent className="max-h-none p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-sm font-semibold",
+                              departmentStyles[employee.department] ?? "bg-muted text-foreground"
+                            )}
+                          >
+                            {getInitials(employee.user)}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-semibold">{employee.user}</h3>
+                            <p className="truncate text-xs text-muted-foreground">{employee.department || "No department"}</p>
+                          </div>
+                        </div>
+                        {renderActions(employee)}
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className={cn("rounded-md", positionStyles[employee.position])}>
+                          {employee.position}
+                        </Badge>
+                        {employee.department ? (
+                          <Badge variant="outline" className={cn("rounded-md", departmentStyles[employee.department])}>
+                            {employee.department}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <div className="mt-5 border-t pt-3">
+                        <p className="text-xs text-muted-foreground">Salary</p>
+                        <p className="text-lg font-semibold">{formatSalary(employee.salary)}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <div className="grid min-w-[720px] grid-cols-[2fr_1.2fr_1.2fr_1fr_88px] border-b bg-muted/40 px-4 py-3 text-xs font-medium uppercase text-muted-foreground">
+                  <span>Name</span>
+                  <span>Position</span>
+                  <span>Department</span>
+                  <span>Salary</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                {filteredEmployees.map((employee) => (
+                  <div
+                    key={employee.id}
+                    className="group grid min-w-[720px] grid-cols-[2fr_1.2fr_1.2fr_1fr_88px] items-center border-b px-4 py-3 last:border-b-0"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+                          departmentStyles[employee.department] ?? "bg-muted text-foreground"
+                        )}
+                      >
+                        {getInitials(employee.user)}
+                      </div>
+                      <span className="truncate text-sm font-medium">{employee.user}</span>
+                    </div>
+                    <Badge variant="outline" className={cn("rounded-md", positionStyles[employee.position])}>
+                      {employee.position}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">{employee.department || "No department"}</span>
+                    <span className="text-sm font-medium">{formatSalary(employee.salary)}</span>
+                    <div className="flex justify-end">{renderActions(employee)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isLoading && filteredEmployees.length === 0 && (
+              <div className="flex flex-1 items-center justify-center rounded-md border border-dashed p-8 text-sm text-muted-foreground">
+                No employees match the current filters.
+              </div>
+            )}
+
+            {isFetching && !isLoading ? (
+              <p className="text-xs text-muted-foreground">Refreshing employee list...</p>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
 
-      <Card className="border-none flex-1 flex flex-col min-h-0 h-[calc(100vh-64px)] max-w-7xl w-full mx-auto shadow-xl">
-        <CardHeader className="pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <Input
-              placeholder="Search by username..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Select value={positionFilter} onValueChange={setPositionFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Positions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Positions</SelectItem>
-                <SelectItem value="Manager">Manager</SelectItem>
-                <SelectItem value="Cook">Cook</SelectItem>
-                <SelectItem value="Waiter">Waiter</SelectItem>
-                <SelectItem value="Cleaner">Cleaner</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="Management">Management</SelectItem>
-                <SelectItem value="Service">Service</SelectItem>
-                <SelectItem value="Cleaning">Cleaning</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredEmployees.map((employee) => (
-              <Card key={employee.id} className="p-4">
-                <div className="flex flex-col items-center space-y-4">
-                  <img
-                    src={employee.employeeImage}
-                    alt={employee.user}
-                    className="w-24 h-32 rounded object-cover"
-                  />
-                  <div className="text-center">
-                    <h3 className="font-semibold text-sm">{employee.user}</h3>
-                    <p className="text-xs text-muted-foreground">{employee.position}</p>
-                    <p className="text-xs text-muted-foreground">{employee.department}</p>
-                    <p className="text-xs text-muted-foreground">Salary: ${employee.salary}</p>
-                  </div>
-                  <div className="flex justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(employee)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(employee.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="sm:max-w-md shadow-none">
+          <DialogHeader>
+            <DialogTitle>{editingEmployeeId ? "Edit Employee" : "Create Employee"}</DialogTitle>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="employee-user">User</label>
+              <Select
+                value={formState.userId}
+                onValueChange={(value) => setFormState((form) => ({ ...form, userId: value }))}
+                disabled={isLoadingProfiles}
+              >
+                <SelectTrigger id="employee-user" className="shadow-none">
+                  <SelectValue placeholder={isLoadingProfiles ? "Loading users..." : "Select user"} />
+                </SelectTrigger>
+                <SelectContent className="shadow-none">
+                  {profileOptions.map((profile) => (
+                    <SelectItem key={profile.user.id} value={profile.user.id.toString()}>
+                      {profile.user.fullName || profile.user.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="employee-position">Position</label>
+              <Input
+                id="employee-position"
+                value={formState.position}
+                onChange={(event) => setFormState((form) => ({ ...form, position: event.target.value }))}
+                placeholder="Manager"
+                className="shadow-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="employee-department">Department</label>
+              <Input
+                id="employee-department"
+                value={formState.department}
+                onChange={(event) => setFormState((form) => ({ ...form, department: event.target.value }))}
+                placeholder="Management"
+                className="shadow-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="employee-salary">Salary</label>
+              <Input
+                id="employee-salary"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formState.salary}
+                onChange={(event) => setFormState((form) => ({ ...form, salary: event.target.value }))}
+                placeholder="44200.00"
+                className="shadow-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? "Saving..." : editingEmployeeId ? "Update Employee" : "Create Employee"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

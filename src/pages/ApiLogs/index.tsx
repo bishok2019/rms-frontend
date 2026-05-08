@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { PaginatedApiResponse, ApiResponse } from "@/types/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,7 +45,19 @@ export default function ApiLogsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<ApiLog | null>(null);
   const [logDetails, setLogDetails] = useState<string>("");
-  const [search, setSearch] = useState("");
+  // const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const [filters, setFilters] = useState({
     method: "",
     status_code: "",
@@ -54,22 +66,18 @@ export default function ApiLogsPage() {
   });
   const [page, setPage] = useState(1);
 
-  const filtersString = useMemo(() => JSON.stringify(filters), [filters]);
-
-
-
   const fetchLogs = useCallback(async (pageNum: number = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: pageNum.toString(),
-        search: search,
+        search: debouncedSearch,
         ...Object.fromEntries(
           Object.entries(filters).filter(([, value]) => value !== "")
         ),
       });
       const response = await privateApiInstance.get(`api-logs-app/list?${params}`);
-      const data = await response.json() as PaginatedApiResponse<unknown>;
+      const data = await response.json() as PaginatedApiResponse<ApiLog>;
       console.log("API response:", data);
       setLogs(data.data || []);
       setPage(pageNum);
@@ -79,7 +87,7 @@ export default function ApiLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, filtersString, filters]);
+  }, [debouncedSearch, filters]);
 
   useEffect(() => {
     fetchLogs(1);
@@ -88,7 +96,7 @@ export default function ApiLogsPage() {
   const retrieveLog = async (id: number) => {
     try {
       const response = await privateApiInstance.get(`api-logs-app/retrieve/${id}`);
-      const data = await response.json() as ApiResponse<unknown>;
+      const data = await response.json() as ApiResponse<ApiLog>;
       console.log("Retrieve response:", data);
       setLogDetails(JSON.stringify(data.data || data, null, 2));
       setSelectedLog(logs.find(log => log.id === id) || null);
@@ -96,16 +104,6 @@ export default function ApiLogsPage() {
       console.error("Failed to retrieve log:", error);
     }
   };
-
-
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 space-y-6 h-full overflow-hidden flex flex-col">
@@ -124,8 +122,8 @@ export default function ApiLogsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Input
               placeholder="Search logs..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
             <select
               value={filters.method}
@@ -170,7 +168,23 @@ export default function ApiLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-                {logs.map((log) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <div className="inline-flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading logs...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No logs found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                logs.map((log) => (
                   <TableRow
                     key={log.id}
                     onDoubleClick={() => retrieveLog(log.id)}
@@ -184,7 +198,8 @@ export default function ApiLogsPage() {
                     <TableCell>{log.ip}</TableCell>
                     <TableCell>{log.osType}</TableCell>
                   </TableRow>
-                ))}
+                ))
+              )}
             </TableBody>
           </Table>
           <div className="flex justify-between items-center mt-4">

@@ -1,7 +1,8 @@
 "use client";
 
-import { memo, useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { memo, startTransition, useState, useMemo, useEffect, useCallback } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -10,14 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Separator } from "../../components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Textarea } from "../../components/ui/textarea";
-import { Search, Settings, Plus, Minus, Receipt, X, Trash2 } from "lucide-react";
+import { Search, Settings, Plus, Minus, Receipt, X, Trash2, RefreshCw } from "lucide-react";
 import type { MenuItem, PaginatedApiResponse } from "../../types/api";
 import useAuthenticationStore from "../../pages/Authentication/Store/authenticationStore";
 import { Lock } from "lucide-react";
 import { privateApiInstance } from "../../Utils/ky";
 import { toast } from "sonner";
 import { getCategories } from "../../pages/Setup/Pages/Menu/Store/api";
-import type { MenuCategory } from "../../types/api";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -57,12 +57,6 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(numericValue) ? numericValue : fallback;
 };
 
-const MENU_CARD_MIN_WIDTH = 190;
-const MENU_GRID_GAP = 14;
-const MENU_CARD_HEIGHT = 240;
-const MENU_ROW_HEIGHT = MENU_CARD_HEIGHT + MENU_GRID_GAP;
-const MENU_OVERSCAN_ROWS = 3;
-
 const extractPaginatedItems = <T,>(payload?: PaginatedApiResponse<T> | { results?: T[] }) => {
   if (!payload) {
     return [];
@@ -77,6 +71,17 @@ const extractPaginatedItems = <T,>(payload?: PaginatedApiResponse<T> | { results
   }
 
   return [];
+};
+
+const scheduleAfterPaint = (callback: () => void) => {
+  if (typeof window === "undefined") {
+    startTransition(callback);
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    window.setTimeout(() => startTransition(callback), 0);
+  });
 };
 
 // Custom Hook: useDebounce
@@ -96,11 +101,15 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+type MenuItemsResponse = PaginatedApiResponse<MenuItem> | { results?: MenuItem[]; next?: string | null; currentPage?: number };
+
 // Custom Hook: useMenuItemsSearch
-function useMenuItemsSearch(searchTerm: string, category: string, page: number = 1, pageSize: number = 50) {
-  return useQuery({
-    queryKey: ["menu-items-search", searchTerm, category, page, pageSize],
-    queryFn: async ({ signal }) => {
+function useMenuItemsSearch(searchTerm: string, category: string, pageSize: number = 24) {
+  return useInfiniteQuery<MenuItemsResponse, Error>({
+    queryKey: ["menu-items-search", searchTerm, category, pageSize],
+    initialPageParam: 1,
+    queryFn: async ({ signal, pageParam }) => {
+      const page = Number(pageParam) || 1;
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("limit", pageSize.toString());
@@ -112,6 +121,15 @@ function useMenuItemsSearch(searchTerm: string, category: string, page: number =
         .json<PaginatedApiResponse<MenuItem>>();
 
       return response;
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.next) {
+        return undefined;
+      }
+
+      return "currentPage" in lastPage && typeof lastPage.currentPage === "number"
+        ? lastPage.currentPage + 1
+        : allPages.length + 1;
     },
     enabled: true,
   });
@@ -126,22 +144,24 @@ const OrderTypeSelector = memo(function OrderTypeSelector({
   onOrderTypeChange: (value: OrderType) => void;
 }) {
   return (
-    <Select value={orderType} onValueChange={onOrderTypeChange}>
-      <SelectTrigger className="h-7 w-24 px-2 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="dine_in">Dine In</SelectItem>
-        <SelectItem value="takeaway">Takeaway</SelectItem>
-        <SelectItem value="delivery">Delivery</SelectItem>
-      </SelectContent>
-    </Select>
+    <select
+      value={orderType}
+      onChange={(event) => onOrderTypeChange(event.target.value as OrderType)}
+      className="h-7 w-24 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      aria-label="Order type"
+    >
+      <option value="dine_in">Dine In</option>
+      <option value="pickup">Takeaway</option>
+      <option value="delivery">Delivery</option>
+    </select>
   );
 });
 
 interface MenuItemCardProps {
   item: MenuItem;
   onItemClick: (item: MenuItem) => void;
+  eager?: boolean;
+  priority?: boolean;
 }
 
 interface CartItemProps {
@@ -224,12 +244,12 @@ const CartItem = memo(function CartItem({
   );
 });
 
-const MenuItemCard = memo(function MenuItemCard({ item, onItemClick }: MenuItemCardProps) {
+const MenuItemCard = memo(function MenuItemCard({ item, onItemClick, eager = false, priority = false }: MenuItemCardProps) {
   const categoryLabel = item.category && typeof item.category === "object" ? item.category.name : "Item";
 
   return (
     <Card
-      className="hover:shadow-md cursor-pointer h-[240px] relative"
+      className="hover:shadow-md cursor-pointer h-[240px] relative contain-layout contain-paint"
       onClick={() => onItemClick(item)}
     >
       <CardContent className="p-4 h-full flex flex-col overflow-hidden">
@@ -239,8 +259,12 @@ const MenuItemCard = memo(function MenuItemCard({ item, onItemClick }: MenuItemC
               src={item.photo}
               alt={item.name}
               className="w-full h-full object-cover rounded-lg"
-              loading="lazy"
+              width={320}
+              height={160}
+              loading={eager || priority ? "eager" : "lazy"}
               decoding="async"
+              fetchPriority={priority ? "high" : "auto"}
+              sizes="(min-width: 1280px) 220px, (min-width: 768px) 25vw, 50vw"
             />
           ) : (
             <div className="text-muted-foreground text-sm">No Image</div>
@@ -288,14 +312,7 @@ const MenuItemCard = memo(function MenuItemCard({ item, onItemClick }: MenuItemC
 const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: MenuItem) => void }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [allItems, setAllItems] = useState<MenuItem[]>([]);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const [gridWidth, setGridWidth] = useState(0);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const scrollFrameRef = useRef<number | null>(null);
-  const pageSize = 50;
+  const pageSize = 24;
 
   // Fetch categories for filtering
   const { data: categoriesData } = useQuery({
@@ -307,87 +324,23 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
-  // Reset page and items when search or category changes
-  useEffect(() => {
-    setCurrentPage(1);
-    setAllItems([]);
-  }, [debouncedSearchTerm, selectedCategory]);
-
   // API query with debounced search and pagination
-  const { data: menuData, isLoading, error } = useMenuItemsSearch(debouncedSearchTerm, selectedCategory, currentPage, pageSize);
+  const {
+    data: menuData,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMenuItemsSearch(debouncedSearchTerm, selectedCategory, pageSize);
 
-  // Accumulate items from all pages
-  useEffect(() => {
-    if (menuData) {
-      const items = extractPaginatedItems(menuData);
-      if (currentPage === 1) {
-        setAllItems(items);
-      } else {
-        setAllItems(prev => [...prev, ...items]);
-      }
-    }
-  }, [menuData, currentPage]);
-
-  const filteredItems = allItems;
-  const columnCount = Math.max(
-    1,
-    Math.floor((gridWidth + MENU_GRID_GAP) / (MENU_CARD_MIN_WIDTH + MENU_GRID_GAP))
+  const filteredItems = useMemo(
+    () => menuData?.pages.flatMap((page) => extractPaginatedItems(page)) ?? [],
+    [menuData]
   );
-  const totalRows = Math.ceil(filteredItems.length / columnCount);
-  // const startRow = Math.max(0, Math.floor(scrollTop / MENU_ROW_HEIGHT) - MENU_OVERSCAN_ROWS);
-  // const endRow = Math.min(
-  //   totalRows,
-  //   Math.ceil((scrollTop + viewportHeight) / MENU_ROW_HEIGHT) + MENU_OVERSCAN_ROWS
-  // );
-  // const visibleItems = filteredItems.slice(startRow * columnCount, endRow * columnCount);
   const visibleItems = filteredItems;
-  const topSpacerHeight = 0; // startRow * MENU_ROW_HEIGHT;
-  const bottomSpacerHeight = 0; // Math.max(0, (totalRows - endRow) * MENU_ROW_HEIGHT);
 
-
-
-  useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-
-    if (!scrollContainer) {
-      return;
-    }
-
-    const updateMeasurements = () => {
-      setViewportHeight(scrollContainer.clientHeight);
-      setGridWidth(scrollContainer.clientWidth - 32);
-    };
-
-    updateMeasurements();
-
-    const resizeObserver = new ResizeObserver(updateMeasurements);
-    resizeObserver.observe(scrollContainer);
-
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (scrollFrameRef.current !== null) {
-        cancelAnimationFrame(scrollFrameRef.current);
-      }
-    };
-  }, []);
-
-  const handleMenuScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    const nextScrollTop = event.currentTarget.scrollTop;
-
-    if (scrollFrameRef.current !== null) {
-      cancelAnimationFrame(scrollFrameRef.current);
-    }
-
-    scrollFrameRef.current = requestAnimationFrame(() => {
-      setScrollTop(nextScrollTop);
-      scrollFrameRef.current = null;
-    });
-  }, []);
-
-  if (isLoading && currentPage === 1) {
+  if (isLoading) {
     return (
       <div className="flex-1 flex flex-col">
         <div className="p-4 bg-card border-b">
@@ -496,31 +449,29 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
 
       {/* Menu Grid */}
       <div
-        ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4"
-        onScroll={handleMenuScroll}
       >
-        {topSpacerHeight > 0 && (
-          <div style={{ height: topSpacerHeight }} />
-        )}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3.5">
-          {visibleItems.map((item: MenuItem) => (
-              <MenuItemCard key={item.id} item={item} onItemClick={onItemClick} />
+            {visibleItems.map((item: MenuItem, index: number) => (
+              <MenuItemCard
+                key={item.id}
+                item={item}
+                onItemClick={onItemClick}
+                eager={index === 0}
+                priority={index === 0}
+              />
            ))}
          </div>
-        {bottomSpacerHeight > 0 && (
-          <div style={{ height: bottomSpacerHeight }} />
-        )}
 
          {/* Load More Button */}
-         {menuData && menuData.next && (
+         {hasNextPage && (
            <div className="flex justify-center mt-4 mb-4">
              <Button
-               onClick={() => setCurrentPage(prev => prev + 1)}
-               disabled={isLoading}
+               onClick={() => fetchNextPage()}
+               disabled={isFetchingNextPage}
                variant="outline"
              >
-               {isLoading ? "Loading..." : "Load More Items"}
+               {isFetchingNextPage ? "Loading..." : "Load More Items"}
              </Button>
            </div>
          )}
@@ -536,7 +487,7 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
 });
 
 // CustomizeModal Component
-function CustomizeModal({
+const CustomizeModal = memo(function CustomizeModal({
   isOpen,
   onClose,
   item,
@@ -548,7 +499,7 @@ function CustomizeModal({
   onClose: () => void;
   item: MenuItem | null;
   customizationData: CustomizationData;
-  setCustomizationData: (data: CustomizationData) => void;
+  setCustomizationData: Dispatch<SetStateAction<CustomizationData>>;
   onAddToOrder: (item: MenuItem, data: CustomizationData) => void;
 }) {
   if (!item) return null;
@@ -577,7 +528,7 @@ function CustomizeModal({
             <label className="block text-sm font-medium mb-2">Size</label>
             <Select
               value={customizationData.size}
-              onValueChange={(value) => setCustomizationData({ ...customizationData, size: value })}
+              onValueChange={(value) => setCustomizationData((data) => ({ ...data, size: value }))}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -603,10 +554,10 @@ function CustomizeModal({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setCustomizationData({
-                  ...customizationData,
-                  quantity: Math.max(1, customizationData.quantity - 1)
-                })}
+                onClick={() => setCustomizationData((data) => ({
+                  ...data,
+                  quantity: Math.max(1, data.quantity - 1)
+                }))}
                 disabled={customizationData.quantity <= 1}
               >
                 <Minus className="h-4 w-4" />
@@ -617,10 +568,10 @@ function CustomizeModal({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setCustomizationData({
-                  ...customizationData,
-                  quantity: customizationData.quantity + 1
-                })}
+                onClick={() => setCustomizationData((data) => ({
+                  ...data,
+                  quantity: data.quantity + 1
+                }))}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -633,10 +584,10 @@ function CustomizeModal({
             <Textarea
               placeholder="Any special cooking instructions..."
               value={customizationData.specialRequests}
-              onChange={(e) => setCustomizationData({
-                ...customizationData,
+              onChange={(e) => setCustomizationData((data) => ({
+                ...data,
                 specialRequests: e.target.value
-              })}
+              }))}
               rows={3}
             />
           </div>
@@ -655,7 +606,7 @@ function CustomizeModal({
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 // Main POS Page Component
 const Sidebar = memo(function Sidebar({
@@ -673,8 +624,8 @@ const Sidebar = memo(function Sidebar({
   onClearAll,
   onRemoveItem,
   isCreatingOrder,
-  onTableSelectOpenChange,
-  isTableSelectOpen
+  onRefreshTables,
+  isRefreshingTables
 }: {
   cart: CartItem[];
   selectedTable: string;
@@ -690,8 +641,8 @@ const Sidebar = memo(function Sidebar({
   onClearAll: () => void;
   onRemoveItem: (itemId: number) => void;
   isCreatingOrder: boolean;
-  onTableSelectOpenChange: (open: boolean) => void;
-  isTableSelectOpen: boolean;
+  onRefreshTables: () => void;
+  isRefreshingTables: boolean;
 }) {
   const cartTotal = cart.reduce((sum, item) => sum + (toNumber(item.price) * toNumber(item.quantity)), 0);
   const totalQuantity = cart.reduce((sum, item) => sum + toNumber(item.quantity), 0);
@@ -704,14 +655,14 @@ const Sidebar = memo(function Sidebar({
       : tableOptions.filter((table) => table.section === selectedSection);
 
   return (
-    <div className="w-96 bg-card border-l flex flex-col">
+    <div className="w-96 bg-card border-l flex flex-col contain-layout contain-paint">
 
 
       {/* Table Assignment */}
       <div className="grid grid-cols-2 gap-3 p-4 border-b">
         <div>
           <label className="block text-sm font-medium mb-2">Section</label>
-          <Select value={selectedSection} onValueChange={setSelectedSection} disabled={isLoadingTables} onOpenChange={(open) => onTableSelectOpenChange(open || isTableSelectOpen)}>
+          <Select value={selectedSection} onValueChange={setSelectedSection} disabled={isLoadingTables}>
             <SelectTrigger>
               <SelectValue placeholder={isLoadingTables ? "Loading sections..." : "All sections"} />
             </SelectTrigger>
@@ -726,24 +677,38 @@ const Sidebar = memo(function Sidebar({
           </Select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Table Number</label>
-          <Select value={selectedTable} onValueChange={setSelectedTable} disabled={isLoadingTables} onOpenChange={onTableSelectOpenChange}>
-            <SelectTrigger>
-              <SelectValue placeholder={isLoadingTables ? "Loading tables..." : "Select table"} />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredTableOptions.map((table) => (
-                <SelectItem key={table.id} value={table.id.toString()}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={`h-2 w-2 rounded-full ${table.isOccupied ? "bg-red-500" : "bg-green-500"}`}
-                    />
-                    <span>{table.tableNumber}-{table.section || "No Section"}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <label className="block text-sm font-medium">Table Number</label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onRefreshTables}
+              disabled={isLoadingTables || isRefreshingTables}
+              aria-label="Refresh tables"
+              title="Refresh tables"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingTables || isRefreshingTables ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+            <Select value={selectedTable} onValueChange={setSelectedTable} disabled={isLoadingTables}>
+              <SelectTrigger>
+                <SelectValue placeholder={isLoadingTables ? "Loading tables..." : "Select table"} />
+              </SelectTrigger>
+              <SelectContent className="max-h-56 overflow-y-auto">
+                {filteredTableOptions.map((table) => (
+                  <SelectItem key={table.id} value={table.id.toString()}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 rounded-full ${table.isOccupied ? "bg-red-500" : "bg-green-500"}`}
+                      />
+                      <span>{table.tableNumber}-{table.section || "No Section"}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
         </div>
       </div>
 
@@ -830,16 +795,24 @@ export default function POSPage() {
     specialRequests: "",
   });
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-  const [isTableSelectOpen, setIsTableSelectOpen] = useState(false);
-  const { data: diningTablesResponse, isLoading: isLoadingTables } = useQuery({
+  const { data: diningTablesResponse, isLoading: isLoadingTables, isFetching: isRefreshingTables, refetch: refetchTables } = useQuery<
+    PaginatedApiResponse<PosDiningTable> | { results: PosDiningTable[] },
+    Error
+  >({
     queryKey: ["pos-dining-tables"],
     queryFn: async () =>
       privateApiInstance
         .get("core-app/dining_table/list")
         .json<PaginatedApiResponse<PosDiningTable> | { results: PosDiningTable[] }>(),
-    enabled: isAuthenticated && isTableSelectOpen,
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const tableOptions = useMemo(() => extractPaginatedItems(diningTablesResponse), [diningTablesResponse]);
+
+  const handleRefreshTables = useCallback(() => {
+    refetchTables();
+  }, [refetchTables]);
 
   useEffect(() => {
     if (
@@ -854,33 +827,41 @@ export default function POSPage() {
   // Cart operations
   const addToCart = useCallback((item: MenuItem, customData?: CustomizationData) => {
     const quantity = customData?.quantity || 1.0;
-    setCart(prev => {
-      const existing = prev.find(cartItem => cartItem.id === item.id);
-      if (existing) {
-        return prev.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + quantity }
-            : cartItem
-        );
-      }
-      return [...prev, { ...item, quantity, selectedVariant: customData, orderType: "dine_in" }];
+    scheduleAfterPaint(() => {
+      setCart(prev => {
+        const existing = prev.find(cartItem => cartItem.id === item.id);
+        if (existing) {
+          return prev.map(cartItem =>
+            cartItem.id === item.id
+              ? { ...cartItem, quantity: cartItem.quantity + quantity }
+              : cartItem
+          );
+        }
+        return [...prev, { ...item, quantity, selectedVariant: customData, orderType: "dine_in" }];
+      });
     });
   }, []);
 
   // Handle item click - determine if simple add or customize
   const handleItemClick = useCallback((item: MenuItem) => {
     if (item.isVariant || (item.discountPrice && item.discountPrice !== item.price)) {
-      setCustomizingItem(item);
-      setCustomizationData({
-        size: "Medium",
-    quantity: 1,
-        specialRequests: "",
+      scheduleAfterPaint(() => {
+        setCustomizingItem(item);
+        setCustomizationData({
+          size: "Medium",
+          quantity: 1,
+          specialRequests: "",
+        });
+        setIsCustomizeModalOpen(true);
       });
-      setIsCustomizeModalOpen(true);
     } else {
       addToCart(item);
     }
   }, [addToCart]);
+
+  const closeCustomizeModal = useCallback(() => {
+    setIsCustomizeModalOpen(false);
+  }, []);
 
   const updateQuantity = useCallback((itemId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -1026,12 +1007,12 @@ export default function POSPage() {
         onClearAll={clearAllItems}
         onRemoveItem={removeItem}
         isCreatingOrder={isCreatingOrder}
-        onTableSelectOpenChange={setIsTableSelectOpen}
-        isTableSelectOpen={isTableSelectOpen}
+        onRefreshTables={handleRefreshTables}
+        isRefreshingTables={isRefreshingTables}
       />
       <CustomizeModal
         isOpen={isCustomizeModalOpen}
-        onClose={() => setIsCustomizeModalOpen(false)}
+        onClose={closeCustomizeModal}
         item={customizingItem}
         customizationData={customizationData}
         setCustomizationData={setCustomizationData}

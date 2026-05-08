@@ -17,7 +17,6 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Menu } from "./menu";
-import { useBackgroundPreference } from "@/contexts/background-preference-context";
 import ProfilePage from "@/pages/Profile";
 import useAuthenticationStore, { useLogoutMutation } from "@/pages/Authentication/Store/authenticationStore";
 import { successFunction } from "@/components/common/Alert";
@@ -25,7 +24,6 @@ import { successFunction } from "@/components/common/Alert";
 export function Sidebar() {
   const sidebar = useStore(useSidebar, (x) => x);
   const navigate = useNavigate();
-  const { bgImagesEnabled, setBgImagesEnabled } = useBackgroundPreference();
   const username = useAuthenticationStore((state) => state.username);
   const logoutMutation = useLogoutMutation();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -36,9 +34,9 @@ export function Sidebar() {
   return (
     <aside
         className={cn(
-          "fixed top-0 left-0 z-20 h-screen w-72 font-poppins scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent",
+          "fixed top-0 left-0 z-20 h-screen w-72 font-poppins scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-transparent transition-transform ease-in-out duration-300 will-change-transform contain-layout contain-paint",
           settings.disabled && "hidden",
-          !getOpenState() && "lg:hidden"
+          getOpenState() ? "translate-x-0" : "-translate-x-full pointer-events-none"
         )}
         style={{ borderRight: 'none' }}
     >
@@ -61,15 +59,6 @@ export function Sidebar() {
           </Link>
         </Button>
         <div className="flex items-center justify-between mb-4 gap-3">
-          {/* <label className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-200">
-            <input
-              type="checkbox"
-              checked={bgImagesEnabled}
-              onChange={(e) => setBgImagesEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-400"
-            />
-            BG images
-          </label> */}
           <ThemeToggle />
         </div>
         <Menu isOpen={true} />

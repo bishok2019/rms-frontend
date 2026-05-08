@@ -57,18 +57,15 @@ interface TableRecord {
   qrCode?: string;
 }
 
-const mapDiningTableToRecord = (
-  table: DiningTable,
-  sections: Section[]
-): TableRecord => ({
+const mapDiningTableToRecord = (table: DiningTable): TableRecord => ({
   id: String(table.id),
-  tableCode: table.table_number,
-  area: typeof table.section === 'string' ? table.section : sections.find((section) => section.id === table.section)?.name || "",
-  capacity: table.capacity,
-  isOccupied: table.is_occupied,
-  canTakeMultipleOrder: table.can_take_multiple_orders,
-  remarks: table.remarks || "",
-  qrCode: table.qr_code,
+  tableCode: String(table.tableNumber || "").replace(/^T/, ""),
+  area: String(table.section || ""),
+  capacity: Number(table.seatingCapacity) || 0,
+  isOccupied: Boolean(table.isOccupied),
+  canTakeMultipleOrder: Boolean(table.canHaveMultipleOrders),
+  remarks: String(table.specialRequests || ""),
+  qrCode: "", // Not in API
 });
 
 export default function TablesPage() {
@@ -77,7 +74,7 @@ export default function TablesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"areas" | "tables" | "order-items">("areas");
-  const [sectionsLoaded, setSectionsLoaded] = useState(false);
+
   const [tableSearch, setTableSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "occupied" | "vacant">(
@@ -100,15 +97,10 @@ export default function TablesPage() {
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
   const areas = sectionsResponse?.data ?? [];
   const tables =
-    diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table, areas)) ??
+    diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table)) ??
     [];
 
-  // Set sectionsLoaded when sections are fetched
-  useEffect(() => {
-    if (sectionsResponse) {
-      setSectionsLoaded(true);
-    }
-  }, [sectionsResponse]);
+
 
   const filteredTables = tables.filter((table) => {
     const matchesArea = areaFilter === "" || table.area === areaFilter;
@@ -216,7 +208,7 @@ export default function TablesPage() {
       section: selectedSection?.id ?? null,
       specialRequests: table.remarks || "",
       canHaveMultipleOrders: table.canTakeMultipleOrder,
-      isOccupied: false,
+      isOccupied: table.isOccupied,
     };
 
     if (selectedTable) {
@@ -352,10 +344,10 @@ export default function TablesPage() {
                 {areas.map((area) => (
                   <div
                     key={area.id}
-                    onClick={() => {
-                      setAreaFilter(area.name);
-                      setActiveTab("tables");
-                    }}
+                    // onClick={() => {
+                    //   setAreaFilter(area.name);
+                    //   setActiveTab("tables");
+                    // }}
                     onDoubleClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -494,7 +486,7 @@ export default function TablesPage() {
                   <div
                     key={table.id}
                     className="rounded-lg border border-border bg-background/40 p-4 cursor-pointer hover:bg-secondary/40 transition-colors"
-                    onClick={() => handleTableClick(table)}
+                    onDoubleClick={() => handleTableClick(table)}
                     title="Click to view order items"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -607,7 +599,7 @@ export default function TablesPage() {
                     value={orderItemFilters.status}
                     onValueChange={(value) => {
                       setOrderItemFilters(prev => ({ ...prev, status: value }));
-                      fetchTableOrderItems(selectedTableForOrders.id);
+                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
                     }}
                   >
                     <SelectTrigger>
@@ -627,7 +619,7 @@ export default function TablesPage() {
                     value={orderItemFilters.dietaryType}
                     onValueChange={(value) => {
                       setOrderItemFilters(prev => ({ ...prev, dietaryType: value }));
-                      fetchTableOrderItems(selectedTableForOrders.id);
+                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
                     }}
                   >
                     <SelectTrigger>
@@ -648,7 +640,7 @@ export default function TablesPage() {
                     value={orderItemFilters.spiceLevel}
                     onValueChange={(value) => {
                       setOrderItemFilters(prev => ({ ...prev, spiceLevel: value }));
-                      fetchTableOrderItems(selectedTableForOrders.id);
+                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
                     }}
                   >
                     <SelectTrigger>
@@ -669,7 +661,7 @@ export default function TablesPage() {
                     value={orderItemFilters.orderType}
                     onValueChange={(value) => {
                       setOrderItemFilters(prev => ({ ...prev, orderType: value }));
-                      fetchTableOrderItems(selectedTableForOrders.id);
+                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
                     }}
                   >
                     <SelectTrigger>
@@ -689,7 +681,7 @@ export default function TablesPage() {
                     value={orderItemFilters.servingSize}
                     onValueChange={(value) => {
                       setOrderItemFilters(prev => ({ ...prev, servingSize: value }));
-                      fetchTableOrderItems(selectedTableForOrders.id);
+                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
                     }}
                   >
                     <SelectTrigger>

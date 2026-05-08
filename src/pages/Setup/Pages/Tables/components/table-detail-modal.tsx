@@ -26,6 +26,7 @@ interface TableRecord {
   tableCode: string;
   area: string;
   capacity: number;
+  isOccupied: boolean;
   canTakeMultipleOrder: boolean;
   remarks?: string;
   qrCode?: string;
@@ -36,7 +37,7 @@ interface TableDetailModalProps {
   onOpenChange: (open: boolean) => void;
   table: TableRecord | null;
   areas: Section[];
-  onSave: (table: TableRecord) => void;
+  onSave: (table: TableRecord) => Promise<void>;
 }
 
 export function TableDetailModal({
@@ -51,6 +52,7 @@ export function TableDetailModal({
     tableCode: "",
     area: "",
     capacity: 4,
+    isOccupied: false,
     canTakeMultipleOrder: false,
     remarks: "",
   });
@@ -64,6 +66,7 @@ export function TableDetailModal({
         tableCode: "",
         area: areas?.[0]?.name || "",
         capacity: 4,
+        isOccupied: false,
         canTakeMultipleOrder: false,
         remarks: "",
       });
@@ -164,6 +167,26 @@ export function TableDetailModal({
               className="font-normal cursor-pointer"
             >
               Can take multiple orders
+            </Label>
+          </div>
+
+          {/* Occupied Checkbox */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="occupied"
+              checked={formData.isOccupied}
+              onCheckedChange={(checked) =>
+                setFormData({
+                  ...formData,
+                  isOccupied: checked as boolean,
+                })
+              }
+            />
+            <Label
+              htmlFor="occupied"
+              className="font-normal cursor-pointer"
+            >
+              Is occupied
             </Label>
           </div>
 
