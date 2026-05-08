@@ -1,23 +1,9 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { Check, Cross, Edit, Grid3X3, List, Minus, Plus, Search, Table2, Trash2, Users, X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Trash2, Plus, Grid3x3, Loader2, ChefHat, CheckCircle, XCircle } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { TableDetailModal } from "../components/table-detail-modal";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -26,6 +12,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { errorFunction } from "@/components/common/Alert";
+import { cn } from "@/lib/utils";
+import type { DiningTable, Section } from "@/types/api";
+import { TableDetailModal } from "../components/table-detail-modal";
 import CreateArea from "./CreateArea";
 import {
   useCreateDiningTable,
@@ -33,18 +23,11 @@ import {
   useSections,
   useUpdateDiningTable,
 } from "../Store/TablesStore";
-import { Input } from "@/components/ui/input";
-import { ordersApi } from "@/services/orders";
-import { successFunction, errorFunction } from "@/components/common/Alert";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import type { DiningTable, Section, OrderItem } from "@/types/api";
+
+type ActiveTab = "areas" | "tables";
+type StatusFilter = "all" | "available" | "occupied";
+type MultiOrderFilter = "all" | "yes" | "no";
+type ViewMode = "grid" | "list";
 
 interface TableRecord {
   id: string;
@@ -57,796 +40,858 @@ interface TableRecord {
   qrCode?: string;
 }
 
-const mapDiningTableToRecord = (table: DiningTable): TableRecord => ({
+interface AreaRecord {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  tables: TableRecord[];
+  source?: Section;
+}
+
+const tableCssVars = {
+  "--area-surface": "var(--card)",
+  "--area-muted": "var(--muted)",
+  "--area-line": "var(--border)",
+  "--area-green-bg": "oklch(0.93 0.08 145 / 0.72)",
+  "--area-green-fg": "oklch(0.35 0.11 145)",
+  "--area-red-bg": "oklch(0.94 0.08 27 / 0.72)",
+  "--area-red-fg": "oklch(0.43 0.15 27)",
+  "--area-teal-bg": "oklch(0.92 0.08 190 / 0.72)",
+  "--area-teal-fg": "oklch(0.31 0.09 196)",
+  "--area-gray-bg": "oklch(0.92 0 0 / 0.72)",
+  "--area-gray-fg": "oklch(0.42 0 0)",
+  "--area-amber": "oklch(0.78 0.16 75)",
+} as CSSProperties;
+
+const areaIcons: Record<string, string> = {
+  Terrace: "🏡",
+  Balcony: "🌇",
+  "Private Room": "🚪",
+  Garden: "🌳",
+  Bar: "🍸",
+  Rooftop: "🌃",
+  Family: "👨‍👩‍👧",
+  VIP: "⭐",
+  Outdoor: "☀️",
+  Indoor: "🍽️",
+};
+
+const sampleAreas: AreaRecord[] = [
+  area("Terrace", "Open-air seating for sunny lunches.", [["T1", 4, false], ["T2", 2, true], ["T3", 4, false]]),
+  area("Balcony", "Compact overlook seating for small groups.", [["B1", 2, false], ["B2", 2, false]]),
+  area("Private Room", "Quiet enclosed room for meetings and celebrations.", [["P1", 8, true], ["P2", 6, false]]),
+  area("Garden", "Green outdoor section for relaxed dining.", [["G1", 4, false], ["G2", 6, false], ["G3", 4, true]]),
+  area("Bar", "High-energy counter and lounge tables.", [["BR1", 2, true], ["BR2", 2, true], ["BR3", 4, false]]),
+  area("Rooftop", "Evening dining with skyline views.", [["R1", 4, false], ["R2", 4, true]]),
+  area("Family", "Roomier tables for families and groups.", [["F1", 6, false], ["F2", 8, true], ["F3", 6, false]]),
+  area("VIP", "Premium reserved seating with extra service.", [["V1", 4, true], ["V2", 6, true]]),
+  area("Outdoor", "Street-side casual seating.", [["O1", 2, false], ["O2", 4, false], ["O3", 4, false]]),
+  area("Indoor", "Main dining room with flexible seating.", [["I1", 4, true], ["I2", 4, false], ["I3", 2, false]]),
+];
+
+function area(name: string, description: string, tables: Array<[string, number, boolean]>): AreaRecord {
+  const id = Object.keys(areaIcons).indexOf(name) + 1;
+  return {
+    id,
+    name,
+    description,
+    icon: areaIcons[name] ?? "🍽️",
+    tables: tables.map(([tableCode, capacity, isOccupied], index) => ({
+      id: `sample-${id}-${index}`,
+      tableCode,
+      area: name,
+      capacity,
+      isOccupied,
+      canTakeMultipleOrder: capacity >= 4,
+      remarks: "",
+    })),
+  };
+}
+
+const toSection = (areaRecord: AreaRecord): Section => ({
+  id: areaRecord.id,
+  name: areaRecord.name,
+  description: areaRecord.description,
+  isActive: true,
+  totalTables: String(areaRecord.tables.length),
+  tablesOccupied: areaRecord.tables.filter((table) => table.isOccupied).length,
+  tablesAvailable: areaRecord.tables.filter((table) => !table.isOccupied).length,
+});
+
+const resolveTableArea = (table: DiningTable, sections: Section[]) => {
+  if (table.section == null) return "Unassigned";
+  const raw = String(table.section);
+  return sections.find((section) => String(section.id) === raw || section.name === raw)?.name ?? raw;
+};
+
+const mapDiningTableToRecord = (table: DiningTable, sections: Section[]): TableRecord => ({
   id: String(table.id),
   tableCode: String(table.tableNumber || "").replace(/^T/, ""),
-  area: String(table.section || ""),
+  area: resolveTableArea(table, sections),
   capacity: Number(table.seatingCapacity) || 0,
   isOccupied: Boolean(table.isOccupied),
   canTakeMultipleOrder: Boolean(table.canHaveMultipleOrders),
   remarks: String(table.specialRequests || ""),
-  qrCode: "", // Not in API
+  qrCode: "",
 });
 
 export default function TablesPage() {
-  const [selectedTable, setSelectedTable] = useState<TableRecord | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("tables");
+  const [search, setSearch] = useState("");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [multiOrderFilter, setMultiOrderFilter] = useState<MultiOrderFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [expandedAreaId, setExpandedAreaId] = useState<number | null>(null);
   const [selectedArea, setSelectedArea] = useState<Section | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<TableRecord | null>(null);
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"areas" | "tables" | "order-items">("areas");
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
 
-  const [tableSearch, setTableSearch] = useState("");
-  const [areaFilter, setAreaFilter] = useState("");
-  const [occupiedFilter, setOccupiedFilter] = useState<"all" | "occupied" | "vacant">(
-    "all"
-  );
-  const [selectedTableForOrders, setSelectedTableForOrders] = useState<TableRecord | null>(null);
-  const [tableOrderItems, setTableOrderItems] = useState<OrderItem[]>([]);
-  const [editingQuantity, setEditingQuantity] = useState<{ id: number; quantity: number } | null>(null);
-  const [isLoadingOrderItems, setIsLoadingOrderItems] = useState(false);
-  const [orderItemFilters, setOrderItemFilters] = useState({
-    status: "all",
-    dietaryType: "all",
-    spiceLevel: "all",
-    orderType: "all",
-    servingSize: "all",
-  });
-  const { data: sectionsResponse } = useSections(true); // Always load sections
-  const { data: diningTablesResponse } = useDiningTables(activeTab === "tables" || activeTab === "order-items"); // Only load dining tables when needed
+  const { data: sectionsResponse } = useSections(true);
+  const { data: diningTablesResponse } = useDiningTables(true);
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
-  const areas = sectionsResponse?.data ?? [];
-  const tables =
-    diningTablesResponse?.data.map((table) => mapDiningTableToRecord(table)) ??
-    [];
 
+  const apiSections = sectionsResponse?.data ?? [];
+  const apiTables = diningTablesResponse?.data ?? [];
 
+  const areas = useMemo(() => {
+    if (apiSections.length === 0) return sampleAreas;
 
-  const filteredTables = tables.filter((table) => {
-    const matchesArea = areaFilter === "" || table.area === areaFilter;
-    const matchesOccupied =
-      occupiedFilter === "all" ||
-      (occupiedFilter === "occupied" && table.isOccupied) ||
-      (occupiedFilter === "vacant" && !table.isOccupied);
-    const matchesSearch =
-      tableSearch.trim().length === 0 ||
-      table.tableCode.toLowerCase().includes(tableSearch.toLowerCase()) ||
-      table.area.toLowerCase().includes(tableSearch.toLowerCase());
-    return matchesArea && matchesOccupied && matchesSearch;
-  });
-
-  const handleEditTable = (table: TableRecord) => {
-    setSelectedTable(table);
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteTable = (id: string) => {
-    // TODO: Implement delete functionality
-    console.log("Delete table:", id);
-  };
-
-  const handleTableClick = async (table: TableRecord) => {
-    setSelectedTableForOrders(table);
-    setActiveTab("order-items");
-    // Reset filters to default when selecting a new table
-    setOrderItemFilters({
-      status: "all",
-      dietaryType: "all",
-      spiceLevel: "all",
-      orderType: "all",
-      servingSize: "all",
-    });
-    await fetchTableOrderItems(table.id);
-  };
-
-  const handleEditQuantity = (item: OrderItem) => {
-    setEditingQuantity({ id: item.id, quantity: item.quantity });
-  };
-
-  const handleSaveQuantity = async () => {
-    if (!editingQuantity) return;
-
-    try {
-      await ordersApi.updateOrderItem(editingQuantity.id, { quantity: editingQuantity.quantity });
-      // Update local state
-      setTableOrderItems(prev =>
-        prev.map(item =>
-          item.id === editingQuantity.id
-            ? { ...item, quantity: editingQuantity.quantity }
-            : item
-        )
-      );
-      setEditingQuantity(null);
-      successFunction("Quantity updated successfully.");
-    } catch (error) {
-      errorFunction("Failed to update quantity.");
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingQuantity(null);
-  };
-
-  const fetchTableOrderItems = async (tableNumber?: string) => {
-    try {
-      setIsLoadingOrderItems(true);
-      const params: Parameters<typeof ordersApi.getOrderItemsList>[0] = {
-        page_size: 100,
+    const tableRecords = apiTables.map((table) => mapDiningTableToRecord(table, apiSections));
+    return apiSections.map((section) => {
+      const tables = tableRecords.filter((table) => table.area === section.name);
+      return {
+        id: section.id,
+        name: section.name,
+        description: section.description || "Restaurant service area.",
+        icon: areaIcons[section.name] ?? "🍽️",
+        tables,
+        source: section,
       };
+    });
+  }, [apiSections, apiTables]);
 
-      if (tableNumber) {
-        params.order__dining_table = tableNumber;
-      }
+  const sectionsForForms = useMemo(() => {
+    return apiSections.length > 0 ? apiSections : sampleAreas.map(toSection);
+  }, [apiSections]);
 
-      // Add filters
-      if (orderItemFilters.status !== "all") params.status = orderItemFilters.status;
-      if (orderItemFilters.dietaryType !== "all") params.dietary_type = orderItemFilters.dietaryType;
-      if (orderItemFilters.spiceLevel !== "all") params.spice_level = orderItemFilters.spiceLevel;
-      if (orderItemFilters.orderType !== "all") params.order_type = orderItemFilters.orderType;
-      if (orderItemFilters.servingSize !== "all") params.serving_size = orderItemFilters.servingSize;
+  const allTables = useMemo(() => areas.flatMap((areaRecord) => areaRecord.tables), [areas]);
+  const filteredAreas = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return areas.filter((areaRecord) => {
+      const matchesSearch =
+        term.length === 0 ||
+        areaRecord.name.toLowerCase().includes(term) ||
+        areaRecord.description.toLowerCase().includes(term) ||
+        areaRecord.tables.some((table) => table.tableCode.toLowerCase().includes(term));
 
-      const response = await ordersApi.getOrderItemsList(params);
+      return matchesSearch;
+    });
+  }, [areas, search]);
 
-      if (response.success && response.data) {
-        setTableOrderItems(response.data);
-      } else {
-        setTableOrderItems([]);
-      }
-    } catch (error) {
-      console.error("Error fetching table order items:", error);
-      setTableOrderItems([]);
-    } finally {
-      setIsLoadingOrderItems(false);
-    }
-  };
+  const filteredTables = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return allTables.filter((table) => {
+      const matchesSearch =
+        term.length === 0 ||
+        table.tableCode.toLowerCase().includes(term) ||
+        table.area.toLowerCase().includes(term);
+      const matchesArea = areaFilter === "all" || table.area === areaFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "available" && !table.isOccupied) ||
+        (statusFilter === "occupied" && table.isOccupied);
+      const matchesMultiOrder =
+        multiOrderFilter === "all" ||
+        (multiOrderFilter === "yes" && table.canTakeMultipleOrder) ||
+        (multiOrderFilter === "no" && !table.canTakeMultipleOrder);
+
+      return matchesSearch && matchesArea && matchesStatus && matchesMultiOrder;
+    });
+  }, [allTables, areaFilter, multiOrderFilter, search, statusFilter]);
+
+  const stats = useMemo(() => {
+    const occupied = filteredTables.filter((table) => table.isOccupied).length;
+    return {
+      totalTables: filteredTables.length,
+      available: filteredTables.length - occupied,
+      occupied,
+      seats: filteredTables.reduce((total, table) => total + table.capacity, 0),
+    };
+  }, [filteredTables]);
 
   const handleSaveTable = async (table: TableRecord) => {
-    const selectedSection = areas.find((area) => area.name === table.area);
+    if (table.id.startsWith("sample")) {
+      errorFunction("Sample tables are read-only. Create a real table to edit it.");
+      setIsTableModalOpen(false);
+      return;
+    }
+
+    const section = sectionsForForms.find((areaRecord) => areaRecord.name === table.area);
     const payload = {
       tableNumber: table.tableCode,
       seatingCapacity: table.capacity,
-      section: selectedSection?.id ?? null,
+      section: section?.id ?? null,
       specialRequests: table.remarks || "",
       canHaveMultipleOrders: table.canTakeMultipleOrder,
       isOccupied: table.isOccupied,
     };
 
     if (selectedTable) {
-      await updateDiningTable({
-        id: Number(selectedTable.id),
-        data: payload,
-      });
+      await updateDiningTable({ id: Number(selectedTable.id), data: payload });
     } else {
       await createDiningTable(payload);
     }
 
-    setIsModalOpen(false);
+    setIsTableModalOpen(false);
     setSelectedTable(null);
   };
+
+  const editArea = (areaRecord: AreaRecord) => {
+    if (!areaRecord.source) {
+      errorFunction("Sample areas are read-only. Create a real area to edit it.");
+      return;
+    }
+    setSelectedArea(areaRecord.source);
+    setIsAreaSheetOpen(true);
+  };
+
+  const editTable = (table: TableRecord) => {
+    if (table.id.startsWith("sample")) {
+      errorFunction("Sample tables are read-only. Create a real table to edit it.");
+      return;
+    }
+    setSelectedTable(table);
+    setIsTableModalOpen(true);
+  };
+
   return (
-    <div className="p-4 md:p-6 space-y-6 min-h-screen">
-      <div className="sticky top-0 z-10 pb-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Tables & Areas</h1>
-      </div>
+    <div className="h-screen overflow-hidden bg-background p-4 md:p-6" style={tableCssVars}>
+      <div className="flex h-full flex-col gap-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold md:text-3xl">Tables & Areas</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Monitor dining areas, occupancy, and table availability.
+              </p>
+            </div>
 
-      <div className="flex gap-2 border-b border-border justify-between items-center">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("areas")}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "areas"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Areas
-          </button>
-          <button
-            onClick={() => setActiveTab("tables")}
-            className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "tables"
-                ? "border-b-2 border-primary text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Tables
-          </button>
-          {selectedTableForOrders && (
-            <button
-              onClick={() => setActiveTab("order-items")}
-              className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === "order-items"
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <ChefHat className="w-4 h-4 mr-1 inline" />
-              Table {selectedTableForOrders.tableCode} Orders
-            </button>
-          )}
-        </div>
-
-        {/* Add button aligned with tabs */}
-        <div className="flex">
-          {activeTab === "areas" && (
-            <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  className="bg-primary text-primary-foreground"
-                  onClick={() => {
-                    setSelectedArea(null);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Area
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>{selectedArea ? "Edit Area" : "New Area"}</SheetTitle>
-                  <SheetDescription>
-                    {selectedArea
-                      ? "Update the area details and save your changes."
-                      : "Create a new area. Click save when you're done."}
-                  </SheetDescription>
-                </SheetHeader>
-                <CreateArea
-                  edit={Boolean(selectedArea)}
-                  data={selectedArea}
-                  onSuccess={() => {
-                    setIsAreaSheetOpen(false);
-                    setSelectedArea(null);
-                  }}
-                />
-              </SheetContent>
-            </Sheet>
-          )}
-
-          {activeTab === "tables" && (
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  className="bg-primary text-primary-foreground"
-                  onClick={() => {
-                    setSelectedTable(null);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Table
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-full sm:max-w-lg bg-card border-border">
-                <DialogHeader>
-                  <DialogTitle>
-                    {selectedTable ? "Edit Table" : "Add New Table"}
-                  </DialogTitle>
-                </DialogHeader>
-                <TableDetailModal
-                  open={isModalOpen}
-                  onOpenChange={setIsModalOpen}
-                  table={selectedTable}
-                  areas={areas}
-                  onSave={handleSaveTable}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
-      </div>
-
-      {/* Areas Tab */}
-      {activeTab === "areas" && (
-        <div className="space-y-4">
-
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6 min-h-[528px] max-h-[528px] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {areas.map((area) => (
-                  <div
-                    key={area.id}
-                    // onClick={() => {
-                    //   setAreaFilter(area.name);
-                    //   setActiveTab("tables");
-                    // }}
-                    onDoubleClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setAreaFilter(area.name);
-                      setActiveTab("tables");
+            <div className="flex flex-wrap gap-2">
+              <Sheet open={isAreaSheetOpen} onOpenChange={setIsAreaSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    className="h-10 rounded-md"
+                    onClick={() => {
+                      setSelectedArea(null);
+                      setActiveTab("areas");
                     }}
-                    className="rounded-lg border border-border bg-background/40 p-4 hover:bg-secondary/40 transition-colors cursor-pointer min-h-[120px]"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Grid3x3 className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">{area.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {area.description}
-                          </p>
-                          <p className="text-xs text-primary mt-1">
-                            Total: {area.totalTables} table{parseInt(area.totalTables) === 1 ? "" : "s"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedArea(area);
-                              setIsAreaSheetOpen(true);
-                            }}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span>{area.tablesAvailable}</span>
-                          <XCircle className="w-4 h-4 text-red-500 ml-2" />
-                          <span>{area.tablesOccupied}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Area
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>{selectedArea ? "Edit Area" : "New Area"}</SheetTitle>
+                    <SheetDescription>
+                      {selectedArea ? "Update area details." : "Create a new restaurant area."}
+                    </SheetDescription>
+                  </SheetHeader>
+                  <CreateArea
+                    edit={Boolean(selectedArea)}
+                    data={selectedArea}
+                    onSuccess={() => {
+                      setIsAreaSheetOpen(false);
+                      setSelectedArea(null);
+                    }}
+                  />
+                </SheetContent>
+              </Sheet>
+
+              <Button
+                variant="outline"
+                className="h-10 rounded-md"
+                onClick={() => {
+                  setSelectedTable(null);
+                  setIsTableModalOpen(true);
+                  setActiveTab("tables");
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Table
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <StatCard label="Total Tables" value={stats.totalTables} icon={Table2} />
+            <StatCard label="Available" value={stats.available} icon={Users} tone="available" />
+            <StatCard label="Occupied" value={stats.occupied} icon={Users} tone="occupied" />
+            <StatCard label="Total Seats" value={stats.seats} icon={Users} />
+          </div>
+
+          <div className="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-center md:justify-between">
+            <div className="inline-flex w-fit rounded-md border border-border bg-muted p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("areas")}
+                className={cn(
+                  "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
+                  activeTab === "areas" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Areas
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("tables")}
+                className={cn(
+                  "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
+                  activeTab === "tables" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Tables
+              </button>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-2 xl:max-w-5xl xl:flex-row">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by table code or area"
+                  className="h-10 rounded-md pl-9"
+                />
               </div>
 
-              {areas.length === 0 && (
-                <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                  No areas found. Create one to get started.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Tables Tab */}
-      {activeTab === "tables" && (
-        <div className="space-y-4">
-
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <Input
-                    value={tableSearch}
-                    onChange={(e) => setTableSearch(e.target.value)}
-                    placeholder="Search by table code or area"
-                    className="md:col-span-2"
-                  />
+              {activeTab === "tables" ? (
+                <>
                   <select
                     value={areaFilter}
-                    onChange={(e) => setAreaFilter(e.target.value)}
-                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                    onChange={(event) => setAreaFilter(event.target.value)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:w-40"
+                    aria-label="Filter by area"
                   >
-                    <option value="">All Areas</option>
-                    {areas.map((area) => (
-                      <option key={area.id} value={area.name}>
-                        {area.name}
+                    <option value="all">All Areas</option>
+                    {areas.map((areaRecord) => (
+                      <option key={areaRecord.id} value={areaRecord.name}>
+                        {areaRecord.name}
                       </option>
                     ))}
                   </select>
+
                   <select
-                    value={occupiedFilter}
-                    onChange={(e) =>
-                      setOccupiedFilter(
-                        e.target.value as "all" | "occupied" | "vacant"
-                      )
-                    }
-                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:w-40"
+                    aria-label="Filter by status"
                   >
                     <option value="all">All Status</option>
+                    <option value="available">Available</option>
                     <option value="occupied">Occupied</option>
-                    <option value="vacant">Vacant</option>
                   </select>
-                </div>
-                {areaFilter && (
-                  <div className="flex items-center justify-between bg-primary/10 px-3 py-2 rounded-md">
-                    <span className="text-sm text-foreground">
-                      Filtered by area: <span className="font-semibold">{areaFilter}</span>
-                    </span>
+
+                  <select
+                    value={multiOrderFilter}
+                    onChange={(event) => setMultiOrderFilter(event.target.value as MultiOrderFilter)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:w-48"
+                    aria-label="Filter by multi-order support"
+                  >
+                    <option value="all">All Multi-order</option>
+                    <option value="yes">Multi-order: Yes</option>
+                    <option value="no">Multi-order: No</option>
+                  </select>
+
+                  <div className="flex rounded-md border border-border bg-muted p-1" aria-label="View mode">
                     <Button
-                      variant="ghost"
+                      type="button"
+                      variant={viewMode === "grid" ? "default" : "ghost"}
                       size="sm"
-                      onClick={() => setAreaFilter("")}
-                      className="text-xs h-auto px-2 py-1"
+                      onClick={() => setViewMode("grid")}
+                      className="h-8 rounded-sm px-3"
+                      aria-pressed={viewMode === "grid"}
+                      title="Grid view"
                     >
-                      Clear
+                      <Grid3X3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={viewMode === "list" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("list")}
+                      className="h-8 rounded-sm px-3"
+                      aria-pressed={viewMode === "list"}
+                      title="List view"
+                    >
+                      <List className="h-4 w-4" />
                     </Button>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                </>
+              ) : null}
+            </div>
+          </div>
 
-          <Card className="bg-card border-border overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Tables</h3>
-                <p className="text-sm text-muted-foreground">
-                  Showing {filteredTables.length} table{filteredTables.length === 1 ? "" : "s"}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredTables.map((table) => (
-                  <div
-                    key={table.id}
-                    className="rounded-lg border border-border bg-background/40 p-4 cursor-pointer hover:bg-secondary/40 transition-colors"
-                    onDoubleClick={() => handleTableClick(table)}
-                    title="Click to view order items"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Grid3x3 className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${table.isOccupied ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                          <div>
-                            <h4 className="font-semibold">T{table.tableCode} - {table.area}</h4>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {table.isOccupied ? 'Occupied' : 'Available'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditTable(table)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTable(table.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+          {activeTab === "tables" ? (
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-medium text-foreground">{filteredTables.length}</span>{" "}
+              table{filteredTables.length === 1 ? "" : "s"}
+            </div>
+          ) : null}
+        </div>
 
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Capacity</span>
-                        <span className="font-semibold">{table.capacity} Seats</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Multiple Order</span>
-                        <span className="font-semibold">
-                          {table.canTakeMultipleOrder ? "Yes" : "No"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {table.remarks && (
-                      <p className="text-sm text-muted-foreground mt-3 line-clamp-2 min-h-9">
-                        {table.remarks}
-                      </p>
-                    )}
-                  </div>
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border bg-card p-3">
+          {activeTab === "areas" ? (
+            <>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {filteredAreas.map((areaRecord) => (
+                  <AreaCard
+                    key={areaRecord.id}
+                    area={areaRecord}
+                    expanded={expandedAreaId === areaRecord.id}
+                    onToggle={() =>
+                      setExpandedAreaId((current) => (current === areaRecord.id ? null : areaRecord.id))
+                    }
+                    onEdit={() => editArea(areaRecord)}
+                    onDelete={() => errorFunction("Delete area is not implemented yet.")}
+                  />
                 ))}
-
-                {filteredTables.length === 0 && (
-                  <div className="col-span-full rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                    {tableSearch ? "No tables match your search." : "No tables found. Create one to get started."}
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
+
+              {filteredAreas.length === 0 ? <EmptyState text="No areas match your filters." /> : null}
+
+              {expandedAreaId ? (
+                <AreaDetailPanel
+                  area={areas.find((areaRecord) => areaRecord.id === expandedAreaId) ?? null}
+                  onClose={() => setExpandedAreaId(null)}
+                  onAddTable={() => {
+                    setSelectedTable(null);
+                    setIsTableModalOpen(true);
+                  }}
+                  onEditTable={editTable}
+                />
+              ) : null}
+            </>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+              {filteredTables.map((table) => (
+                <TableListCard
+                  key={table.id}
+                  table={table}
+                  onEdit={() => editTable(table)}
+                  onDelete={() => errorFunction("Delete table is not implemented yet.")}
+                />
+              ))}
+              {filteredTables.length === 0 ? <EmptyState text="No tables match your filters." /> : null}
+            </div>
+          ) : (
+            <TablesListView
+              tables={filteredTables}
+              onEdit={editTable}
+              onDelete={() => errorFunction("Delete table is not implemented yet.")}
+            />
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Order Items Tab */}
-      {activeTab === "order-items" && (
-        <div className="space-y-4">
-          <Card className="bg-card border-none">
+      <TableDetailModal
+        open={isTableModalOpen}
+        onOpenChange={setIsTableModalOpen}
+        table={selectedTable}
+        areas={sectionsForForms}
+        onSave={handleSaveTable}
+      />
+    </div>
+  );
+}
 
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tableFilter">Table</Label>
-                  <Select
-                    value={selectedTableForOrders ? selectedTableForOrders.id : "all"}
-                    onValueChange={(value) => {
-                      if (value === "all") {
-                        setSelectedTableForOrders(null);
-                        fetchTableOrderItems();
-                      } else {
-                        const table = tables.find(t => t.id === value);
-                        if (table) {
-                          setSelectedTableForOrders(table);
-                          fetchTableOrderItems(table.id);
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Table" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Tables</SelectItem>
-                      {tables.map((table) => (
-                        <SelectItem key={table.id} value={table.id}>
-                          T{table.tableCode} - {table.area}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="statusFilter">Status</Label>
-                  <Select
-                    value={orderItemFilters.status}
-                    onValueChange={(value) => {
-                      setOrderItemFilters(prev => ({ ...prev, status: value }));
-                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="preparing">Preparing</SelectItem>
-                      <SelectItem value="ready">Ready</SelectItem>
-                      <SelectItem value="served">Served</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dietaryFilter">Dietary Type</Label>
-                  <Select
-                    value={orderItemFilters.dietaryType}
-                    onValueChange={(value) => {
-                      setOrderItemFilters(prev => ({ ...prev, dietaryType: value }));
-                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="veg">🥬 Veg</SelectItem>
-                      <SelectItem value="non_veg">🍖 Non-Veg</SelectItem>
-                      <SelectItem value="vegan">🌱 Vegan</SelectItem>
-                      <SelectItem value="gluten_free">🌾 Gluten-Free</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="spiceFilter">Spice Level</Label>
-                  <Select
-                    value={orderItemFilters.spiceLevel}
-                    onValueChange={(value) => {
-                      setOrderItemFilters(prev => ({ ...prev, spiceLevel: value }));
-                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      <SelectItem value="mild">Mild</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hot">Hot</SelectItem>
-                      <SelectItem value="extra_hot">Extra Hot</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orderTypeFilter">Order Type</Label>
-                  <Select
-                    value={orderItemFilters.orderType}
-                    onValueChange={(value) => {
-                      setOrderItemFilters(prev => ({ ...prev, orderType: value }));
-                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="dine_in">Dine In</SelectItem>
-                      <SelectItem value="takeaway">Takeaway</SelectItem>
-                      <SelectItem value="delivery">Delivery</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="servingFilter">Serving Size</Label>
-                  <Select
-                    value={orderItemFilters.servingSize}
-                    onValueChange={(value) => {
-                      setOrderItemFilters(prev => ({ ...prev, servingSize: value }));
-                      if (selectedTableForOrders) fetchTableOrderItems(selectedTableForOrders.id);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sizes</SelectItem>
-                      <SelectItem value="small">Small</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="large">Large</SelectItem>
-                      <SelectItem value="extra_large">Extra Large</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Actions</Label>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedTableForOrders(null);
-                      setOrderItemFilters({
-                        status: "all",
-                        dietaryType: "all",
-                        spiceLevel: "all",
-                        orderType: "all",
-                        servingSize: "all",
-                      });
-                      fetchTableOrderItems();
-                    }}
-                    className="text-muted-foreground w-full"
-                  >
-                    Clear All Filters
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-none overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ChefHat className="h-5 w-5" />
-                {selectedTableForOrders ? `Order Items for Table ${selectedTableForOrders.tableCode}` : "All Order Items"}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Clicked table to view all order items assigned to this table. Click on quantities to edit them.
-              </p>
-             </CardHeader>
-             <CardContent className="max-h-[600px] overflow-y-auto">
-               {isLoadingOrderItems ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span>Loading order items...</span>
-                </div>
-              ) : tableOrderItems.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ChefHat className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No order items found for this table</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="text-foreground">Order #</TableHead>
-                        <TableHead className="text-foreground">Item</TableHead>
-                        <TableHead className="text-foreground">Quantity <span className="text-xs text-muted-foreground">(click to edit)</span></TableHead>
-                        <TableHead className="text-foreground">Status</TableHead>
-                        <TableHead className="text-foreground">Dietary Type</TableHead>
-                        <TableHead className="text-foreground">Prepared At</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tableOrderItems.map((item) => (
-                        <TableRow key={item.id} className="hover:bg-secondary/50">
-                          <TableCell className="font-medium">#{item.order}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.orderItem ? (typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem) : "Unknown Item"}
-                          </TableCell>
-                           <TableCell>
-                             {editingQuantity?.id === item.id ? (
-                               <div className="flex items-center gap-2">
-                                   <Input
-                                     type="number"
-                                     step="0.1"
-                                     min="0.1"
-                                     value={editingQuantity.quantity.toFixed(2)}
-                                    onChange={(e) => setEditingQuantity(prev => prev ? { ...prev, quantity: parseFloat(e.target.value) || 0.1 } : null)}
-                                    className="w-20 h-8"
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleSaveQuantity();
-                                      if (e.key === 'Escape') handleCancelEdit();
-                                    }}
-                                  />
-                                 <Button size="sm" onClick={handleSaveQuantity} className="h-8 px-2">
-                                   Save
-                                 </Button>
-                                 <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-8 px-2">
-                                   Cancel
-                                 </Button>
-                               </div>
-                             ) : (
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="cursor-pointer hover:underline hover:text-primary"
-                                    onClick={() => handleEditQuantity(item)}
-                                    title="Click to edit quantity"
-                                  >
-                                    {(Number(item.quantity) || 0).toFixed(2)}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleEditQuantity(item)}
-                                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-                                    title="Edit quantity"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                             )}
-                           </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              item.status === "preparing"
-                                ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                                : item.status === "ready"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                : item.status === "served"
-                                ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                                : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-                            }`}>
-                              {item.status}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.dietaryType === "veg" && "🥬 Veg"}
-                            {item.dietaryType === "non_veg" && "🍖 Non-Veg"}
-                            {item.dietaryType === "vegan" && "🌱 Vegan"}
-                            {item.dietaryType === "gluten_free" && "🌾 Gluten-Free"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.preparedAt ? new Date(item.preparedAt).toLocaleString() : "Not started"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Grid3X3;
+  tone?: "available" | "occupied";
+}) {
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
+          <p
+            className={cn(
+              "mt-1 text-2xl font-semibold",
+              tone === "available" && "text-green-600",
+              tone === "occupied" && "text-red-600"
+            )}
+          >
+            {value}
+          </p>
         </div>
-      )}
+        <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      {/* Table Detail Modal - Hidden, only used internally */}
-      {activeTab === "tables" && (
-        <TableDetailModal
-          open={false}
-          onOpenChange={setIsModalOpen}
-          table={selectedTable}
-          areas={areas}
-          onSave={handleSaveTable}
-        />
+function AreaCard({
+  area,
+  expanded,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  area: AreaRecord;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const occupied = area.tables.filter((table) => table.isOccupied).length;
+  const available = area.tables.length - occupied;
+  const ratio = area.tables.length ? occupied / area.tables.length : 0;
+  const progressTone = ratio === 0 ? "bg-green-500" : ratio < 0.67 ? "bg-amber-500" : "bg-red-500";
+
+  const progressWidth = ratio === 0 ? 100 : ratio * 100;
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onToggle();
+        }
+      }}
+      className={cn(
+        "group relative flex min-h-[119px] cursor-pointer flex-col rounded-md border border-border bg-background p-3 text-left transition-colors hover:border-foreground/30",
+        expanded && "border-foreground/40"
       )}
+    >
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <IconButton label={`Edit ${area.name}`} icon={Edit} onClick={onEdit} />
+        <IconButton label={`Delete ${area.name}`} icon={Trash2} onClick={onDelete} danger />
+      </div>
+
+      <div className="flex items-start gap-2 pr-20">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-xl">
+          <span aria-hidden="true">{area.icon}</span>
+        </div>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold">{area.name}</h3>
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{area.description}</p>
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-xs font-medium">{area.tables.length} tables</span>
+        <Pill tone="available">{available} available</Pill>
+        <Pill tone="occupied">{occupied} occupied</Pill>
+      </div>
+
+      <div className="mt-auto pt-2">
+        <div className="h-1 overflow-hidden rounded-full bg-muted">
+          <div className={cn("h-full rounded-full", progressTone)} style={{ width: `${progressWidth}%` }} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AreaDetailPanel({
+  area,
+  onClose,
+  onAddTable,
+  onEditTable,
+}: {
+  area: AreaRecord | null;
+  onClose: () => void;
+  onAddTable: () => void;
+  onEditTable: (table: TableRecord) => void;
+}) {
+  if (!area) return null;
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-background p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold">{area.icon} {area.name}</h3>
+          <p className="text-sm text-muted-foreground">Tables in this area</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close area detail" title="Close">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+        {area.tables.map((table) => (
+          <TableTile key={table.id} table={table} compact onClick={() => onEditTable(table)} />
+        ))}
+        <button
+          type="button"
+          onClick={onAddTable}
+          className="flex min-h-20 flex-col items-center justify-center rounded-md border border-dashed border-border bg-muted/35 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+        >
+          <Plus className="mb-2 h-5 w-5" />
+          Add table
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TableListCard({
+  table,
+  onEdit,
+  onDelete,
+}: {
+  table: TableRecord;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const available = !table.isOccupied;
+
+  return (
+    <article
+      className={cn(
+        "group relative flex min-h-[122px] flex-col rounded-md border border-border bg-background p-3 transition-colors hover:border-foreground/30",
+        available ? "border-l-4 border-l-green-500" : "border-l-4 border-l-red-500"
+      )}
+    >
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <IconButton label={`Edit table ${table.tableCode}`} icon={Edit} onClick={onEdit} />
+        <IconButton label={`Delete table ${table.tableCode}`} icon={Trash2} onClick={onDelete} danger />
+      </div>
+
+      <div className="pr-20">
+        <StatusIdBadge tableCode={table.tableCode} occupied={table.isOccupied} />
+        <h3 className="mt-2 line-clamp-1 text-sm font-semibold">Table {table.tableCode}</h3>
+        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{table.area}</p>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
+        <div className="rounded-md border border-border bg-muted/35 p-1.5">
+          <p className="text-xs text-muted-foreground">Capacity</p>
+          <p className="font-semibold">{table.capacity} seats</p>
+        </div>
+        <div className="rounded-md  bg-muted/35 p-1.5">
+          <p className="text-xs text-muted-foreground">Multi-order</p>
+          <div className="mt-0.5">
+            <MultiOrderIndicator enabled={table.canTakeMultipleOrder} />
+          </div>
+        </div>
+      </div>
+
+ 
+    </article>
+  );
+}
+
+function TablesListView({
+  tables,
+  onEdit,
+  onDelete,
+}: {
+  tables: TableRecord[];
+  onEdit: (table: TableRecord) => void;
+  onDelete: (table: TableRecord) => void;
+}) {
+  if (tables.length === 0) {
+    return <EmptyState text="No tables match your filters." />;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[820px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+            <th className="px-3 py-3 font-medium">Table ID</th>
+            <th className="px-3 py-3 font-medium">Area</th>
+            <th className="px-3 py-3 font-medium">Capacity</th>
+            <th className="px-3 py-3 font-medium">Multi-order</th>
+            <th className="px-3 py-3 font-medium">Status</th>
+            <th className="px-3 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tables.map((table) => (
+            <tr key={table.id} className="group border-b border-border last:border-b-0 hover:bg-muted/45">
+              <td className="px-3 py-3">
+                <StatusIdBadge tableCode={table.tableCode} occupied={table.isOccupied} />
+              </td>
+              <td className="px-3 py-3 font-medium">{table.area}</td>
+              <td className="px-3 py-3">{table.capacity} seats</td>
+              <td className="px-3 py-3">
+                <MultiOrderIndicator enabled={table.canTakeMultipleOrder} />
+              </td>
+              <td className="px-3 py-3">
+                <StatusDot occupied={table.isOccupied} />
+              </td>
+              <td className="px-3 py-3">
+                <div className="flex justify-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                  <IconButton label={`Edit table ${table.tableCode}`} icon={Edit} onClick={() => onEdit(table)} />
+                  <IconButton
+                    label={`Delete table ${table.tableCode}`}
+                    icon={Trash2}
+                    onClick={() => onDelete(table)}
+                    danger
+                  />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TableTile({
+  table,
+  compact = false,
+  onClick,
+}: {
+  table: TableRecord;
+  compact?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-md border p-2 text-left transition-colors",
+        table.isOccupied
+          ? "border-red-500/35 bg-red-500/10 hover:bg-red-500/15"
+          : "border-green-500/35 bg-green-500/10 hover:bg-green-500/15",
+        compact ? "min-h-20" : "min-h-[90px]"
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold">T{table.tableCode}</p>
+          <p className="text-xs text-muted-foreground">{table.area}</p>
+        </div>
+        <span className={cn("h-3 w-3 rounded-full", table.isOccupied ? "bg-red-500" : "bg-green-500")} />
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+        <span>{table.capacity} seats</span>
+        <StatusDot occupied={table.isOccupied} />
+      </div>
+    </button>
+  );
+}
+
+function StatusIdBadge({ tableCode, occupied }: { tableCode: string; occupied: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-sm px-2 py-1 text-xs font-semibold"
+      style={{
+        backgroundColor: occupied ? "var(--area-red-bg)" : "var(--area-green-bg)",
+        color: occupied ? "var(--area-red-fg)" : "var(--area-green-fg)",
+      }}
+    >
+      T{tableCode}
+    </span>
+  );
+}
+
+function StatusDot({ occupied }: { occupied: boolean }) {
+  return (
+    <span
+      className={cn("inline-flex h-3 w-3 rounded-full", occupied ? "bg-red-500" : "bg-green-500")}
+      aria-label={occupied ? "Occupied" : "Available"}
+      title={occupied ? "Occupied" : "Available"}
+    />
+  );
+}
+
+function MultiOrderIndicator({ enabled }: { enabled: boolean }) {
+  const Icon = enabled ? Check : X;
+
+  return (
+    <span
+      className="inline-flex h-6 w-6 items-center justify-center rounded-sm"
+      style={{
+        backgroundColor: enabled ? "var(--area-teal-bg)" : "var(--area-gray-bg)",
+        color: enabled ? "var(--area-teal-fg)" : "var(--area-gray-fg)",
+      }}
+      aria-label={enabled ? "Multi-order supported" : "Multi-order not supported"}
+      title={enabled ? "Multi-order supported" : "Multi-order not supported"}
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </span>
+  );
+}
+
+function Pill({ children, tone }: { children: string; tone: "available" | "occupied" }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium"
+      style={{
+        backgroundColor: tone === "available" ? "var(--area-green-bg)" : "var(--area-red-bg)",
+        color: tone === "available" ? "var(--area-green-fg)" : "var(--area-red-fg)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function IconButton({
+  label,
+  icon: Icon,
+  onClick,
+  danger = false,
+}: {
+  label: string;
+  icon: typeof Edit;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          onClick();
+        }
+      }}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background",
+        danger
+          ? "text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="col-span-full flex min-h-64 items-center justify-center rounded-md border border-dashed border-border bg-muted/35 p-8 text-center text-sm text-muted-foreground">
+      {text}
     </div>
   );
 }

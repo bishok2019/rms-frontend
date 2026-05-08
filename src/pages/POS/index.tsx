@@ -286,12 +286,12 @@ const MenuItemCard = memo(function MenuItemCard({ item, onItemClick, eager = fal
             </div>
           )}
         </div>
-        <div className="flex-1 space-y-1 flex flex-col pb-12">
+        <div className="flex-1 space-y-1 flex flex-col pb-3">
           <h3 className="font-semibold text-sm">{item.name}</h3>
-          <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{item.description}</p>
+          <p className="text-xs text-muted-foreground  ">{item.description}</p>
         </div>
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-          <span className="font-bold text-lg text-red-600">{item.price}</span>
+          <span className="font-bold text-lg text-yellow-500">{item.price}</span>
           <Button
             size="sm"
             onClick={(e) => {
