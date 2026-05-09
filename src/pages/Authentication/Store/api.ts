@@ -162,41 +162,39 @@ export interface User {
 export interface UpdateUserData {
   email?: string;
   username?: string;
-  first_name?: string;
-  middle_name?: string;
-  last_name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   gender?: string;
-  birth_date?: string;
+  birthDate?: string;
   district?: number;
   palika?: string;
-  ward_no?: number;
+  wardNo?: number;
   tole?: string;
-  mobile_no?: string;
-  roles?: number[];
-  permissions?: number[];
-  is_active?: boolean;
+  mobileNo?: string;
+  isActive?: boolean;
   userType?: string;
   password?: string;
 }
 
 export interface CreateUserData {
-  username: string;
+  id?: number;
   email?: string;
+  username: string;
   password: string;
-  first_name?: string;
-  middle_name?: string;
-  last_name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   gender?: string;
-  userType: string;
-  birth_date?: string;
+  birthDate?: string;
   district?: number;
   palika?: string;
-  ward_no?: number;
+  wardNo?: number;
   tole?: string;
-  mobile_no?: string;
-  roles?: number[];
-  permissions?: number[];
-  is_active?: boolean;
+  mobileNo?: string;
+  photo?: string;
+  isActive?: boolean;
+  userType: string;
 }
 
 export interface UserFilters {

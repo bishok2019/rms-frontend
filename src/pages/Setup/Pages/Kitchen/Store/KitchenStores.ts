@@ -10,6 +10,8 @@ import {
   updateKitchen,
 } from "./api";
 
+const KITCHEN_LIST_STALE_TIME = 5 * 60 * 1000;
+
 export const kitchenCategoryQueryKeys = {
   all: ["kitchen-category"] as const,
   list: () => [...kitchenCategoryQueryKeys.all, "list"] as const,
@@ -60,6 +62,7 @@ export const useKitchenCategories = (enabled: boolean = true) => {
     queryKey: kitchenCategoryQueryKeys.list(),
     queryFn: getKitchenCategories,
     enabled,
+    staleTime: KITCHEN_LIST_STALE_TIME,
   });
 };
 
@@ -103,6 +106,7 @@ export const useKitchens = (
     queryKey: kitchenQueryKeys.list(params),
     queryFn: () => getKitchens(params),
     enabled,
+    staleTime: KITCHEN_LIST_STALE_TIME,
   });
 };
 
@@ -111,5 +115,6 @@ export const useAllKitchens = (enabled: boolean = true) => {
     queryKey: kitchenQueryKeys.list(),
     queryFn: () => getKitchens(),
     enabled,
+    staleTime: KITCHEN_LIST_STALE_TIME,
   });
 };
