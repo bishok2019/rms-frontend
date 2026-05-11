@@ -73,11 +73,22 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
   };
 
   const getOrderItemLabel = (item: OrderItem) => {
-    if (!item.orderItem) {
-      return "Unnamed item";
+    // First try to get name from orderItem field
+    if (item.orderItem) {
+      if (typeof item.orderItem === "object" && item.orderItem.name) {
+        return item.orderItem.name;
+      }
+      if (typeof item.orderItem === "string") {
+        return item.orderItem;
+      }
     }
 
-    return typeof item.orderItem === "object" ? item.orderItem.name : item.orderItem;
+    // Then try menu_item field as fallback
+    if (item.menu_item && typeof item.menu_item === "object" && item.menu_item.name) {
+      return item.menu_item.name;
+    }
+
+    return "Unnamed item";
   };
 
 

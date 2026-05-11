@@ -10,7 +10,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Separator } from "../../components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+
 import { Textarea } from "../../components/ui/textarea";
 import { ChefHat, Lock, Search, Settings, Plus, Minus, Receipt, Table2, X, Trash2, RefreshCw } from "lucide-react";
 import type { MenuItem, PaginatedApiResponse } from "../../types/api";
@@ -51,6 +51,8 @@ interface PosDiningTable {
   section: string | null;
   isOccupied: boolean;
 }
+
+
 
 const toNumber = (value: unknown, fallback = 0) => {
   const numericValue = typeof value === "number" ? value : Number(value);
@@ -608,6 +610,8 @@ const CustomizeModal = memo(function CustomizeModal({
   );
 });
 
+
+
 // Main POS Page Component
 const Sidebar = memo(function Sidebar({
   cart,
@@ -782,7 +786,7 @@ const Sidebar = memo(function Sidebar({
 const PosNavbar = memo(function PosNavbar() {
   const navItems = [
     { label: "Table", to: "/setup/tables", icon: Table2 },
-    { label: "KOT", to: "/setup/kitchen", icon: ChefHat },
+    { label: "KOT", to: "/kot", icon: ChefHat },
   ];
 
   return (
