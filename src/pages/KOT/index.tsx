@@ -554,11 +554,11 @@ const KOTPage = () => {
             </p>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-6 justify-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
             {kotData.map((order) => (
               <div
                 key={order.id}
-                className={`border-2 border-dashed rounded-lg p-4 shadow-sm print:shadow-none print:border print:border-gray-400 w-full sm:w-80 md:w-72 lg:w-64 xl:w-56 flex-shrink-0 ${
+                className={`border-2 border-dashed rounded-lg p-4 shadow-sm print:shadow-none print:border print:border-gray-400 ${
                   theme === 'dark'
                     ? 'bg-gray-900 border-gray-600 text-white'
                     : 'bg-white border-gray-300 text-gray-900'
