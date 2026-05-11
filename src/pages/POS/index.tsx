@@ -767,7 +767,7 @@ const Sidebar = memo(function Sidebar({
             Confirm & Print
           </Button>
           <Button
-            className="flex-1"
+            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black dark:bg-yellow-500 dark:hover:bg-yellow-600"
             onClick={onConfirmOrder}
             disabled={isCreatingOrder}
           >

@@ -47,18 +47,18 @@ export function Sidebar() {
           "relative h-full flex flex-col px-3 py-4 overflow-y-auto scrollbar-hidden bg-background"
         )}
       >
-        <Button
-          className={cn("transition-transform ease-in-out duration-300 mb-1")}
-          variant="link"
-          asChild
-        >
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <h1 className="text-md font-bold text-gray-900 dark:text-white">
-              Respo
-            </h1>
-          </Link>
-        </Button>
-        <div className="flex items-center justify-between mb-4 gap-3">
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            className={cn("transition-transform ease-in-out duration-300")}
+            variant="link"
+            asChild
+          >
+            <Link to="/dashboard" className="flex items-center gap-2">
+              <h1 className="text-md font-bold text-gray-900 dark:text-white">
+                Respo
+              </h1>
+            </Link>
+          </Button>
           <ThemeToggle />
         </div>
         <Menu isOpen={true} />
