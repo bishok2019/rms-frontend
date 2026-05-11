@@ -59,47 +59,53 @@ export function Sidebar() {
               </h1>
             </Link>
           </Button>
-          <ThemeToggle />
         </div>
         <Menu isOpen={true} />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="mt-4 w-full justify-between border-gray-200 dark:border-zinc-700"
-            >
-              <span className="flex items-center gap-2 truncate">
-                <UserRound className="h-4 w-4" />
-                <span className="truncate">{username || "User"}</span>
-              </span>
-              <ChevronUp className="h-4 w-4 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" side="top">
-            <DropdownMenuLabel className="truncate">
-              {username || "User"}
-            </DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
-              <UserRound className="mr-2 h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                logoutMutation.mutate(undefined, {
-                  onSuccess: () => {
-                    successFunction("Logged out successfully.");
-                    navigate("/");
-                  },
-                });
-              }}
-              className="text-red-600 focus:text-red-600"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="mt-4 flex border border-gray-200 dark:border-zinc-700 rounded-md overflow-hidden">
+          <div className="flex-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between rounded-none border-0 h-full px-3"
+                >
+                <span className="flex items-center gap-2 truncate">
+                  <UserRound className="h-4 w-4" />
+                  <span className="truncate">{username || "User"}</span>
+                </span>
+                <ChevronUp className="h-4 w-4 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" side="top">
+                <DropdownMenuLabel className="truncate">
+                  {username || "User"}
+                </DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
+                  <UserRound className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    logoutMutation.mutate(undefined, {
+                      onSuccess: () => {
+                        successFunction("Logged out successfully.");
+                        navigate("/");
+                      },
+                    });
+                  }}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="border-l border-gray-200 dark:border-zinc-700">
+            <ThemeToggle />
+          </div>
+        </div>
 
         <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
           <DialogContent
