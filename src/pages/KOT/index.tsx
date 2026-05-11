@@ -159,7 +159,7 @@ const KOTPage = () => {
     { value: "all", label: "All Tables" },
     ...(tablesData?.map(table => ({
       value: table.id.toString(),
-      label: `Table ${table.tableNumber}${table.section ? ` (${table.section.name || table.section})` : ''}`
+      label: `Table ${table.tableNumber}${table.section ? ` (${typeof table.section === 'object' && table.section.name ? table.section.name : table.section})` : ''}`
     })) || [])
   ];
 
@@ -190,12 +190,12 @@ const KOTPage = () => {
 
   const getItemName = (orderItem: PosOrderItem) => {
     // First try to get name from orderItem field
-    if (typeof orderItem.orderItem === "object" && orderItem.orderItem?.name) {
+    if (orderItem.orderItem && typeof orderItem.orderItem === "object" && 'name' in orderItem.orderItem && orderItem.orderItem.name) {
       return orderItem.orderItem.name;
     }
 
     // Then try menu_item field as fallback
-    if (orderItem.menu_item && typeof orderItem.menu_item === "object" && orderItem.menu_item.name) {
+    if (orderItem.menu_item && typeof orderItem.menu_item === "object" && 'name' in orderItem.menu_item && orderItem.menu_item.name) {
       return orderItem.menu_item.name;
     }
 
