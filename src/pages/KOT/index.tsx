@@ -14,8 +14,8 @@ interface PosOrderItem {
   id: number;
   orderType: string;
   order: number;
-  orderItem: number | string | { id: number; name: string } | null;
-  menu_item?: { id: number; name: string } | null;
+  orderItem: number | string | { id: number; name?: string } | null;
+  menu_item?: { id: number; name?: string } | null;
   quantity: number;
   dietaryType: string;
   spiceLevel: string;
@@ -82,7 +82,7 @@ const KOTPage = () => {
     queryFn: async () => {
       const response = await privateApiInstance
         .get("core-app/menu/items/list")
-        .json<{ success: boolean; data: Array<{ id: number; name: string }> }>();
+        .json<{ success: boolean; data: Array<{ id: number; name?: string }> }>();
       return response.data || [];
     },
     enabled: isMenuItemDropdownOpen,
@@ -167,7 +167,7 @@ const KOTPage = () => {
     { value: "all", label: "All Menu Items" },
     ...(menuItemsData?.map(item => ({
       value: item.id.toString(),
-      label: item.name
+      label: item.name || `Item ${item.id}`
     })) || [])
   ];
 
@@ -202,6 +202,11 @@ const KOTPage = () => {
     // If orderItem is just a string, use it directly
     if (typeof orderItem.orderItem === "string") {
       return orderItem.orderItem;
+    }
+
+    // If orderItem is a number, convert to string
+    if (typeof orderItem.orderItem === "number") {
+      return `Item ${orderItem.orderItem}`;
     }
 
     // Last resort - return unknown
