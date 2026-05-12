@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,8 @@ import {
   Plus,
   X,
 } from "lucide-react";
+
+import { useTheme } from "@/contexts/theme-context";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -131,7 +133,7 @@ type OrderItemFormData = z.infer<typeof orderItemSchema>;
 
 
 
-const pageStyle = {
+const darkPageStyle = {
   "--color-background-primary": "#121212",
   "--color-background-secondary": "#1b1b1b",
   "--color-background-tertiary": "#0f0f0f",
@@ -148,6 +150,27 @@ const pageStyle = {
   "--color-text-info": "#82b7ff",
   "--color-background-danger": "rgba(226, 75, 74, 0.16)",
   "--color-text-danger": "#ff8d8c",
+  "--border-radius-md": "8px",
+  "--border-radius-lg": "12px",
+} as React.CSSProperties;
+
+const lightPageStyle = {
+  "--color-background-primary": "#ffffff",
+  "--color-background-secondary": "#f8f9fa",
+  "--color-background-tertiary": "#f1f3f4",
+  "--color-text-primary": "#1a1a1a",
+  "--color-text-secondary": "rgba(26, 26, 26, 0.68)",
+  "--color-text-tertiary": "rgba(26, 26, 26, 0.46)",
+  "--color-border-tertiary": "rgba(0, 0, 0, 0.12)",
+  "--color-border-secondary": "rgba(0, 0, 0, 0.24)",
+  "--color-background-success": "rgba(29, 158, 117, 0.12)",
+  "--color-text-success": "#1d9e75",
+  "--color-background-warning": "rgba(239, 159, 39, 0.12)",
+  "--color-text-warning": "#ef9f27",
+  "--color-background-info": "rgba(78, 150, 255, 0.12)",
+  "--color-text-info": "#4e96ff",
+  "--color-background-danger": "rgba(226, 75, 74, 0.12)",
+  "--color-text-danger": "#e24b4a",
   "--border-radius-md": "8px",
   "--border-radius-lg": "12px",
 } as React.CSSProperties;
@@ -748,10 +771,36 @@ function OrderItemForm({
 
 export default function KitchenPage() {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<KitchenTab>("categories");
   const [ordersKitchen, setOrdersKitchen] = useState<Kitchen | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | DietaryType>("all");
+  const [effectiveTheme, setEffectiveTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const updateEffectiveTheme = () => {
+      if (theme === "dark") {
+        setEffectiveTheme("dark");
+      } else if (theme === "light") {
+        setEffectiveTheme("light");
+      } else {
+        // system
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        setEffectiveTheme(systemTheme);
+      }
+    };
+
+    updateEffectiveTheme();
+
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      mediaQuery.addEventListener("change", updateEffectiveTheme);
+      return () => mediaQuery.removeEventListener("change", updateEffectiveTheme);
+    }
+  }, [theme]);
+
+  const pageStyle = effectiveTheme === "dark" ? darkPageStyle : lightPageStyle;
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
