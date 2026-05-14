@@ -699,9 +699,11 @@ export default function MenuSetup() {
                   ))}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                // <div className="overflow-x-auto">
+                <div className="max-h-[500px] overflow-auto">
+
                   <table className="w-full min-w-[860px] border-collapse text-sm">
-                    <thead>
+                    <thead className="sticky top-0 z-10 bg-background">
                       <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
                         <th className="px-3 py-3 font-medium">Item</th>
                         <th className="px-3 py-3 font-medium">Category</th>
