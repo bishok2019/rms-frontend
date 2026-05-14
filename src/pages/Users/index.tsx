@@ -253,7 +253,7 @@ export default function UsersPage() {
               </div>
             ) : (
               <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                <div className="grid min-w-[720px] grid-cols-[2fr_2fr_1.5fr_1fr_1fr_88px] border-b bg-muted/40 px-4 py-3 text-xs font-medium uppercase text-muted-foreground">
+  <div className="sticky top-0 z-10 grid min-w-[720px] grid-cols-[2fr_2fr_1.5fr_1fr_1fr_88px] border-b bg-background px-4 py-3 text-xs font-medium uppercase text-muted-foreground">
                   <span>Username</span>
                   <span>Email</span>
                   <span>Phone</span>
