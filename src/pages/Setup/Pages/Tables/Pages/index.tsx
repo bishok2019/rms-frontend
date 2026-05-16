@@ -410,25 +410,18 @@ export default function TablesPage() {
                   <div className="flex rounded-md border border-border bg-muted p-1" aria-label="View mode">
                     <Button
                       type="button"
-                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      variant="default"
                       size="sm"
-                      onClick={() => setViewMode("grid")}
+                      onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
                       className="h-8 rounded-sm px-3"
-                      aria-pressed={viewMode === "grid"}
-                      title="Grid view"
+                      aria-pressed="true"
+                      title={viewMode === "grid" ? "Switch to list view" : "Switch to grid view"}
                     >
-                      <Grid3X3 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={viewMode === "list" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("list")}
-                      className="h-8 rounded-sm px-3"
-                      aria-pressed={viewMode === "list"}
-                      title="List view"
-                    >
-                      <List className="h-4 w-4" />
+                      {viewMode === "grid" ? (
+                        <List className="h-4 w-4" />
+                      ) : (
+                        <Grid3X3 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </>

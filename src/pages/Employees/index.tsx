@@ -362,23 +362,17 @@ export default function EmployeesPage() {
                 <div className="inline-flex h-9 rounded-md border border-input p-0.5">
                   <Button
                     type="button"
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
+                    variant="secondary"
                     size="icon"
-                    onClick={() => setViewMode("grid")}
+                    onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
                     className="h-8 w-8"
-                    aria-label="Grid view"
+                    aria-label={viewMode === "grid" ? "Switch to list view" : "Switch to grid view"}
                   >
-                    <Grid2X2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={viewMode === "list" ? "secondary" : "ghost"}
-                    size="icon"
-                    onClick={() => setViewMode("list")}
-                    className="h-8 w-8"
-                    aria-label="List view"
-                  >
-                    <List className="h-4 w-4" />
+                    {viewMode === "grid" ? (
+                      <List className="h-4 w-4" />
+                    ) : (
+                      <Grid2X2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
