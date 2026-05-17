@@ -154,10 +154,11 @@ export default function ApiLogsPage() {
             />
           </div>
         </CardHeader>
-        <CardContent className="max-h-[600px] overflow-y-auto">
-          <Table>
-            <TableHeader>
+        <CardContent>
+          <Table containerClassName="max-h-[600px] overflow-auto">
+            <TableHeader className="sticky top-0 z-30 bg-background shadow-sm">
               <TableRow>
+              {/* <TableRow className="bg-background hover:bg-background"> */}
                 <TableHead>Method</TableHead>
                 <TableHead>URL</TableHead>
                 <TableHead>Status</TableHead>
