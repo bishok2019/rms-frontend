@@ -1,6 +1,6 @@
 import Cookies from "js-cookie";
 import { publicApiInstance, privateApiInstance } from "../../../Utils/ky";
-import type { ApiResponse, LoginResponse } from "@/types/api";
+import type { ApiResponse, LoginResponse, PaginatedApiResponse } from "@/types/api";
 
 export interface LoginType {
   username: string;
@@ -204,6 +204,8 @@ export interface UserFilters {
   is_active?: boolean;
   gender?: string;
   district?: number;
+  page?: number;
+  limit?: number;
 }
 
 export const fetchUsers = (filters?: UserFilters) => {
@@ -218,7 +220,7 @@ export const fetchUsers = (filters?: UserFilters) => {
   const queryString = searchParams.toString();
   return privateApiInstance
     .get(`auth-app/users/list${queryString ? `?${queryString}` : ''}`)
-    .json<ApiResponse<User[]>>();
+    .json<ApiResponse<User[]> & Partial<PaginatedApiResponse<User>>>();
 };
 
 export const updateUser = (id: number, body: UpdateUserData) =>

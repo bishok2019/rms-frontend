@@ -31,6 +31,7 @@ import {
   useCreateMenuItem,
   useMenuItems,
   useUpdateMenuItem,
+  useMenuDashboard,
 } from "../Store/MenuStores";
 import { useKitchens } from "../../Kitchen/Store/KitchenStores";
 import CreateCategory from "./CreateCategory";
@@ -315,11 +316,17 @@ export default function MenuSetup() {
   const [itemKitchenFilter, setItemKitchenFilter] = useState("all");
   const [itemAvailabilityFilter, setItemAvailabilityFilter] = useState("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [kitchenOptionsEnabled, setKitchenOptionsEnabled] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const { data: categoriesData } = useCategories();
-  const { data: kitchensData } = useKitchens(true);
-  const { data: menuItemsData } = useMenuItems(true);
+  const shouldLoadCategories = activeTab === "categories" || openCategory || openItem;
+  const shouldLoadMenuItems = activeTab === "items";
+  const shouldLoadKitchens = activeTab === "items" && kitchenOptionsEnabled;
+
+  const { data: categoriesData } = useCategories(shouldLoadCategories);
+  const { data: kitchensData } = useKitchens(shouldLoadKitchens);
+  const { data: menuItemsData } = useMenuItems(shouldLoadMenuItems);
+  const { data: dashboardData } = useMenuDashboard();
 
   const apiCategories = categoriesData?.data ?? [];
   const apiKitchens = kitchensData?.data ?? [];
@@ -381,32 +388,32 @@ export default function MenuSetup() {
   }, [itemAvailabilityFilter, itemCategoryFilter, itemKitchenFilter, itemSearch, menuItems]);
 
   const stats = useMemo(() => {
-    const categoriesInView = new Set(filteredMenuItems.map((item) => resolveRelationId(item.category)));
-    const kitchensInView = new Set(filteredMenuItems.map((item) => resolveRelationId(item.kitchen)));
+    const categoriesInMenu = new Set(menuItems.map((item) => resolveRelationId(item.category)));
+    const kitchensInMenu = new Set(menuItems.map((item) => resolveRelationId(item.kitchen)));
 
     return [
       {
         label: "Total Items",
-        value: filteredMenuItems.length,
+        value: dashboardData?.totalMenuItems ?? menuItems.length,
         icon: UtensilsCrossed,
       },
       {
         label: "Available",
-        value: filteredMenuItems.filter((item) => item.isAvailable).length,
+        value: dashboardData?.activeMenuItems ?? menuItems.filter((item) => item.isAvailable).length,
         icon: CheckCircle2,
       },
       {
-        label: "Categories",
-        value: categoriesInView.size,
+        label: "Menus",
+        value: dashboardData?.totalMenus ?? categoriesInMenu.size,
         icon: Grid3X3,
       },
       {
         label: "Kitchens",
-        value: kitchensInView.size,
+        value: dashboardData?.totalKitchens ?? kitchensInMenu.size,
         icon: ChefHat,
       },
     ];
-  }, [filteredMenuItems]);
+  }, [dashboardData, menuItems]);
 
   const hasActiveFilters =
     itemSearch.trim().length > 0 ||
@@ -569,7 +576,7 @@ export default function MenuSetup() {
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Categories
+                Menu
               </button>
               <button
                 type="button"
@@ -637,6 +644,8 @@ export default function MenuSetup() {
               <select
                 value={itemKitchenFilter}
                 onChange={(event) => setItemKitchenFilter(event.target.value)}
+                onFocus={() => setKitchenOptionsEnabled(true)}
+                onPointerDown={() => setKitchenOptionsEnabled(true)}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 aria-label="Filter by kitchen"
               >

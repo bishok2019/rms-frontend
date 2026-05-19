@@ -10,7 +10,8 @@ import type { Order } from "../../types/api";
 import { ordersApi } from "../../services/orders";
 import { useOrdersStore } from "../../stores/ordersStore";
 import { useDiningTables } from "../../pages/Setup/Pages/Tables/Store/TablesStore";
-import { Loader2, Search, Calendar, User, ChevronLeft, ChevronRight, DollarSign, Users, UserPlus } from "lucide-react";
+import { Loader2, Search, Calendar, User, DollarSign, Users, UserPlus } from "lucide-react";
+import { ListPagination } from "../common/ListPagination";
 
 interface OrderListProps {
   onOrderSelect: (order: Order) => void;
@@ -328,32 +329,15 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
           </div>
         </div>
         {metadata && (
-          <div className="flex items-center justify-between">
-            <div className="flex gap-4 text-sm text-muted-foreground">
-              <span>Current: {metadata.currentCount}/{metadata.totalCount}</span>
-              <span>Page: {metadata.currentPage} of {metadata.totalPages}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreviousPage}
-                disabled={!metadata || metadata.previous === null || isLoading}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={!metadata || metadata.next === null || isLoading}
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <ListPagination
+            currentCount={metadata.currentCount}
+            currentPage={metadata.currentPage}
+            isLoading={isLoading}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
+            totalCount={metadata.totalCount}
+            totalPages={metadata.totalPages}
+          />
         )}
       </CardHeader>
       <CardContent className="p-0">

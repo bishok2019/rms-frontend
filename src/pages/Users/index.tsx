@@ -20,12 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ListPagination } from "@/components/common/ListPagination";
 import { Trash2, Edit2, Loader2, Eye, EyeOff, Search } from "lucide-react";
 import { fetchUsers, updateUser, createUser, type User, type UpdateUserData, type CreateUserData, type UserFilters } from "../Authentication/Store/api";
 
+const PAGE_SIZE = 10;
+
 export default function UsersPage() {
-  const uniqueValues = (users: User[], key: keyof User) =>
-    Array.from(new Set(users.map((user) => user[key]).filter(Boolean))).sort();
+  const uniqueValues = (users: User[], key: "userType") =>
+    Array.from(
+      new Set(users.map((user) => user[key]).filter((value): value is string => Boolean(value)))
+    ).sort();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -34,6 +39,9 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<UserFilters>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -49,9 +57,12 @@ export default function UsersPage() {
     const loadUsers = async () => {
       try {
         setLoading(true);
-        const response = await fetchUsers(filters);
+        const response = await fetchUsers({ ...filters, page: currentPage, limit: PAGE_SIZE });
         if (response.success && response.data) {
           setUsers(response.data);
+          setTotalUsers(response.totalCount ?? response.data.length);
+          setTotalPages(response.totalPages ?? Math.max(1, Math.ceil(response.data.length / PAGE_SIZE)));
+          setCurrentPage(response.currentPage ?? currentPage);
         } else {
           setError(response.message || "Failed to load users");
         }
@@ -63,7 +74,7 @@ export default function UsersPage() {
       }
     };
     loadUsers();
-  }, [filters]);
+  }, [currentPage, filters]);
 
 
 
@@ -79,11 +90,13 @@ export default function UsersPage() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1);
     setFilters(prev => ({ ...prev, username: query || undefined }));
   };
 
   const handleFilterChange = (key: keyof UserFilters, value: string | boolean | number | undefined) => {
-    setFilters(prev => ({ ...prev, [key]: value || undefined }));
+    setCurrentPage(1);
+    setFilters(prev => ({ ...prev, [key]: value === "" ? undefined : value }));
   };
 
   const handleChange = (
@@ -97,7 +110,7 @@ export default function UsersPage() {
 
   const handleSubmit = async () => {
     try {
-      if (isCreateMode) {
+      if (!editingId) {
         setCreating(true);
         const createData: CreateUserData = {
           username: formData.first_name, // Using first_name as username for now
@@ -111,10 +124,11 @@ export default function UsersPage() {
 
         const response = await createUser(createData);
         if (response.success && response.data) {
-          setUsers([...users, response.data]);
-          setIsCreateMode(false);
+          setUsers((current) => [response.data!, ...current].slice(0, PAGE_SIZE));
+          setTotalUsers((current) => current + 1);
+          setTotalPages((current) => Math.max(current, Math.ceil((totalUsers + 1) / PAGE_SIZE)));
           setFormData({ first_name: "", email: "", mobile_no: "", user_type: "waiter", is_active: true, password: "" });
-          setOpen(false);
+          setIsFormOpen(false);
         } else {
           setError(response.message || "Failed to create user");
         }
@@ -134,14 +148,14 @@ export default function UsersPage() {
           setUsers(users.map((u) => (u.id === editingId ? response.data! : u)));
           setEditingId(null);
           setFormData({ first_name: "", email: "", mobile_no: "", user_type: "waiter", is_active: true, password: "" });
-          setOpen(false);
+          setIsFormOpen(false);
         } else {
           setError(response.message || "Failed to update user");
         }
       }
     } catch (err) {
-      setError(`Failed to ${isCreateMode ? 'create' : 'update'} user`);
-      console.error(`Error ${isCreateMode ? 'creating' : 'updating'} user:`, err);
+      setError(`Failed to ${editingId ? 'update' : 'create'} user`);
+      console.error(`Error ${editingId ? 'updating' : 'creating'} user:`, err);
     } finally {
       setUpdating(false);
       setCreating(false);
@@ -176,6 +190,7 @@ export default function UsersPage() {
 
   const handleDelete = (id: number) => {
     setUsers(users.filter((u) => u.id !== id));
+    setTotalUsers((current) => Math.max(current - 1, 0));
   };
 
   return (
@@ -304,6 +319,18 @@ export default function UsersPage() {
               <div className="flex flex-1 items-center justify-center rounded-md border border-dashed p-8 text-sm text-muted-foreground">
                 No users found
               </div>
+            )}
+
+            {!loading && users.length > 0 && (
+              <ListPagination
+                currentCount={users.length}
+                currentPage={currentPage}
+                isLoading={loading}
+                onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                onPreviousPage={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                totalCount={totalUsers}
+                totalPages={totalPages}
+              />
             )}
           </CardContent>
         </Card>

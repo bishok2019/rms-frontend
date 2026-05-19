@@ -20,11 +20,12 @@ import CreateArea from "./CreateArea";
 import {
   useCreateDiningTable,
   useDiningTables,
+  useDiningTableDashboard,
   useSections,
   useUpdateDiningTable,
 } from "../Store/TablesStore";
 
-type ActiveTab = "areas" | "tables";
+type ActiveTab = "overview" | "areas" | "tables";
 type StatusFilter = "all" | "available" | "occupied";
 type MultiOrderFilter = "all" | "yes" | "no";
 type ViewMode = "grid" | "list";
@@ -137,7 +138,7 @@ const mapDiningTableToRecord = (table: DiningTable, sections: Section[]): TableR
 });
 
 export default function TablesPage() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("tables");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -148,9 +149,12 @@ export default function TablesPage() {
   const [selectedTable, setSelectedTable] = useState<TableRecord | null>(null);
   const [isAreaSheetOpen, setIsAreaSheetOpen] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [sectionsEnabled, setSectionsEnabled] = useState(false);
+  const [tablesEnabled, setTablesEnabled] = useState(false);
 
-  const { data: sectionsResponse } = useSections(true);
-  const { data: diningTablesResponse } = useDiningTables(true);
+  const { data: dashboardData } = useDiningTableDashboard();
+  const { data: sectionsResponse } = useSections(sectionsEnabled);
+  const { data: diningTablesResponse } = useDiningTables(tablesEnabled);
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
 
@@ -216,12 +220,24 @@ export default function TablesPage() {
   const stats = useMemo(() => {
     const occupied = filteredTables.filter((table) => table.isOccupied).length;
     return {
-      totalTables: filteredTables.length,
-      available: filteredTables.length - occupied,
-      occupied,
-      seats: filteredTables.reduce((total, table) => total + table.capacity, 0),
+      totalTables: dashboardData?.totalTables ?? filteredTables.length,
+      available: dashboardData?.availableTables ?? filteredTables.length - occupied,
+      occupied: dashboardData?.occupiedTables ?? occupied,
+      totalAreas: dashboardData?.totalAreas ?? areas.length,
+      seats: dashboardData?.totalSeats ?? filteredTables.reduce((total, table) => total + table.capacity, 0),
     };
-  }, [filteredTables]);
+  }, [areas.length, dashboardData, filteredTables]);
+
+  const enableActiveTabData = () => {
+    if (activeTab === "areas") {
+      setSectionsEnabled(true);
+      return;
+    }
+
+    if (activeTab === "tables") {
+      setTablesEnabled(true);
+    }
+  };
 
   const handleSaveTable = async (table: TableRecord) => {
     if (table.id.startsWith("sample")) {
@@ -255,6 +271,7 @@ export default function TablesPage() {
       errorFunction("Sample areas are read-only. Create a real area to edit it.");
       return;
     }
+    setSectionsEnabled(true);
     setSelectedArea(areaRecord.source);
     setIsAreaSheetOpen(true);
   };
@@ -264,6 +281,8 @@ export default function TablesPage() {
       errorFunction("Sample tables are read-only. Create a real table to edit it.");
       return;
     }
+    setSectionsEnabled(true);
+    setTablesEnabled(true);
     setSelectedTable(table);
     setIsTableModalOpen(true);
   };
@@ -286,6 +305,7 @@ export default function TablesPage() {
                   <Button
                     className="h-10 rounded-md"
                     onClick={() => {
+                      setSectionsEnabled(true);
                       setSelectedArea(null);
                       setActiveTab("areas");
                     }}
@@ -316,6 +336,7 @@ export default function TablesPage() {
                 variant="outline"
                 className="h-10 rounded-md"
                 onClick={() => {
+                  setSectionsEnabled(true);
                   setSelectedTable(null);
                   setIsTableModalOpen(true);
                   setActiveTab("tables");
@@ -327,10 +348,11 @@ export default function TablesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             <StatCard label="Total Tables" value={stats.totalTables} icon={Table2} />
             <StatCard label="Available" value={stats.available} icon={Users} tone="available" />
             <StatCard label="Occupied" value={stats.occupied} icon={Users} tone="occupied" />
+            <StatCard label="Areas" value={stats.totalAreas} icon={Grid3X3} />
             <StatCard label="Total Seats" value={stats.seats} icon={Users} />
           </div>
 
@@ -338,7 +360,10 @@ export default function TablesPage() {
             <div className="inline-flex w-fit rounded-md border border-border bg-muted p-1">
               <button
                 type="button"
-                onClick={() => setActiveTab("areas")}
+                onClick={() => {
+                  setSectionsEnabled(true);
+                  setActiveTab("areas");
+                }}
                 className={cn(
                   "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
                   activeTab === "areas" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
@@ -348,7 +373,10 @@ export default function TablesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab("tables")}
+                onClick={() => {
+                  setTablesEnabled(true);
+                  setActiveTab("tables");
+                }}
                 className={cn(
                   "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
                   activeTab === "tables" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
@@ -358,22 +386,33 @@ export default function TablesPage() {
               </button>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 xl:max-w-5xl xl:flex-row">
-              <div className="relative flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by table code or area"
-                  className="h-10 rounded-md pl-9"
-                />
-              </div>
+            {activeTab !== "overview" ? (
+              <div className="flex flex-1 flex-col gap-2 xl:max-w-5xl xl:flex-row">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(event) => {
+                      enableActiveTabData();
+                      setSearch(event.target.value);
+                    }}
+                    onFocus={enableActiveTabData}
+                    placeholder="Search by table code or area"
+                    className="h-10 rounded-md pl-9"
+                  />
+                </div>
 
-              {activeTab === "tables" ? (
+                {activeTab === "tables" ? (
                 <>
                   <select
                     value={areaFilter}
-                    onChange={(event) => setAreaFilter(event.target.value)}
+                    onChange={(event) => {
+                      setSectionsEnabled(true);
+                      setTablesEnabled(true);
+                      setAreaFilter(event.target.value);
+                    }}
+                    onFocus={() => setSectionsEnabled(true)}
+                    onPointerDown={() => setSectionsEnabled(true)}
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:w-40"
                     aria-label="Filter by area"
                   >
@@ -387,7 +426,12 @@ export default function TablesPage() {
 
                   <select
                     value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                    onChange={(event) => {
+                      setTablesEnabled(true);
+                      setStatusFilter(event.target.value as StatusFilter);
+                    }}
+                    onFocus={() => setTablesEnabled(true)}
+                    onPointerDown={() => setTablesEnabled(true)}
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:w-40"
                     aria-label="Filter by status"
                   >
@@ -398,7 +442,12 @@ export default function TablesPage() {
 
                   <select
                     value={multiOrderFilter}
-                    onChange={(event) => setMultiOrderFilter(event.target.value as MultiOrderFilter)}
+                    onChange={(event) => {
+                      setTablesEnabled(true);
+                      setMultiOrderFilter(event.target.value as MultiOrderFilter);
+                    }}
+                    onFocus={() => setTablesEnabled(true)}
+                    onPointerDown={() => setTablesEnabled(true)}
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:w-48"
                     aria-label="Filter by multi-order support"
                   >
@@ -412,7 +461,10 @@ export default function TablesPage() {
                       type="button"
                       variant="default"
                       size="sm"
-                      onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+                      onClick={() => {
+                        setTablesEnabled(true);
+                        setViewMode(viewMode === "grid" ? "list" : "grid");
+                      }}
                       className="h-8 rounded-sm px-3"
                       aria-pressed="true"
                       title={viewMode === "grid" ? "Switch to list view" : "Switch to grid view"}
@@ -425,8 +477,9 @@ export default function TablesPage() {
                     </Button>
                   </div>
                 </>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {activeTab === "tables" ? (
@@ -437,8 +490,16 @@ export default function TablesPage() {
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border bg-card p-3">
-          {activeTab === "areas" ? (
+        {activeTab === "overview" ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border border-dashed border-border bg-card p-6 text-center">
+            <div>
+              <p className="font-medium">Choose Areas or Tables to load details.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Only the dashboard summary is loaded on refresh.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-md border border-border bg-card p-3">
+            {activeTab === "areas" ? (
             <>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {filteredAreas.map((areaRecord) => (
@@ -462,6 +523,7 @@ export default function TablesPage() {
                   area={areas.find((areaRecord) => areaRecord.id === expandedAreaId) ?? null}
                   onClose={() => setExpandedAreaId(null)}
                   onAddTable={() => {
+                    setSectionsEnabled(true);
                     setSelectedTable(null);
                     setIsTableModalOpen(true);
                   }}
@@ -487,8 +549,9 @@ export default function TablesPage() {
               onEdit={editTable}
               onDelete={() => errorFunction("Delete table is not implemented yet.")}
             />
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <TableDetailModal
@@ -549,9 +612,10 @@ function AreaCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const occupied = area.tables.filter((table) => table.isOccupied).length;
-  const available = area.tables.length - occupied;
-  const ratio = area.tables.length ? occupied / area.tables.length : 0;
+  const totalTables = Number(area.source?.totalTables ?? area.tables.length) || 0;
+  const occupied = Number(area.source?.tablesOccupied ?? area.tables.filter((table) => table.isOccupied).length) || 0;
+  const available = Number(area.source?.tablesAvailable ?? totalTables - occupied) || 0;
+  const ratio = totalTables ? occupied / totalTables : 0;
   const progressTone = ratio === 0 ? "bg-green-500" : ratio < 0.67 ? "bg-amber-500" : "bg-red-500";
 
   const progressWidth = ratio === 0 ? 100 : ratio * 100;
@@ -588,7 +652,7 @@ function AreaCard({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-xs font-medium">{area.tables.length} tables</span>
+        <span className="text-xs font-medium">{totalTables} tables</span>
         <Pill tone="available">{available} available</Pill>
         <Pill tone="occupied">{occupied} occupied</Pill>
       </div>

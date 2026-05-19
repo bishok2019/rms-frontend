@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { privateApiInstance } from "@/Utils/ky";
+import { ListPagination } from "@/components/common/ListPagination";
 
 interface ApiLog {
   id: number;
@@ -65,6 +66,11 @@ export default function ApiLogsPage() {
     created_at: "",
   });
   const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    currentCount: 0,
+    totalCount: 0,
+    totalPages: 1,
+  });
 
   const fetchLogs = useCallback(async (pageNum: number = 1) => {
     setLoading(true);
@@ -81,9 +87,15 @@ export default function ApiLogsPage() {
       console.log("API response:", data);
       setLogs(data.data || []);
       setPage(pageNum);
+      setPagination({
+        currentCount: data.currentCount ?? data.data?.length ?? 0,
+        totalCount: data.totalCount ?? data.data?.length ?? 0,
+        totalPages: data.totalPages ?? 1,
+      });
     } catch (error) {
       console.error("Failed to fetch logs:", error);
       setLogs([]);
+      setPagination({ currentCount: 0, totalCount: 0, totalPages: 1 });
     } finally {
       setLoading(false);
     }
@@ -203,23 +215,15 @@ export default function ApiLogsPage() {
               )}
             </TableBody>
           </Table>
-          <div className="flex justify-between items-center mt-4">
-            <Button
-              onClick={() => fetchLogs(page - 1)}
-              disabled={page <= 1 || loading}
-              variant="outline"
-            >
-              Previous
-            </Button>
-            <span>Page {page}</span>
-            <Button
-              onClick={() => fetchLogs(page + 1)}
-              disabled={logs.length === 0 || loading}
-              variant="outline"
-            >
-              Next
-            </Button>
-          </div>
+          <ListPagination
+            currentCount={pagination.currentCount}
+            currentPage={page}
+            isLoading={loading}
+            onNextPage={() => fetchLogs(Math.min(page + 1, pagination.totalPages))}
+            onPreviousPage={() => fetchLogs(Math.max(page - 1, 1))}
+            totalCount={pagination.totalCount}
+            totalPages={pagination.totalPages}
+          />
         </CardContent>
       </Card>
 

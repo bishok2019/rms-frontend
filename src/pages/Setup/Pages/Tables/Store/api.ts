@@ -6,6 +6,14 @@
 import { privateApiInstance } from "@/Utils/ky";
 import type { ApiResponse, DiningTable, PaginatedApiResponse, Section } from "@/types/api";
 
+export interface DiningTableDashboard {
+  totalTables: number;
+  occupiedTables: number;
+  availableTables: number;
+  totalAreas: number;
+  totalSeats: number;
+}
+
 /**
  * Creates a new section in the restaurant layout.
  * @param body - The section data to create
@@ -82,3 +90,9 @@ export const getDiningTables = async (params?: {
     .json<PaginatedApiResponse<DiningTable>>();
   return response;
 };
+
+export const getDiningTableDashboard = () =>
+  privateApiInstance
+    .get("core-app/dining_table/dashboard")
+    .json<ApiResponse<DiningTableDashboard> | DiningTableDashboard>()
+    .then((response) => ("data" in response ? response.data : response));

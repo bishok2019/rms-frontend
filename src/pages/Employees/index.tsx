@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Edit2, Grid2X2, List, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { privateApiInstance } from "@/Utils/ky";
 import { cn } from "@/lib/utils";
+import { ListPagination } from "@/components/common/ListPagination";
 
 interface Employee {
   id: number;
@@ -63,6 +64,8 @@ interface EmployeeFormState {
 }
 
 type ViewMode = "grid" | "list";
+
+const PAGE_SIZE = 12;
 
 const defaultFormState: EmployeeFormState = {
   userId: "",
@@ -177,6 +180,7 @@ export default function EmployeesPage() {
   const [positionFilter, setPositionFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
   const [formState, setFormState] = useState<EmployeeFormState>(defaultFormState);
@@ -215,6 +219,20 @@ export default function EmployeesPage() {
       }),
     [departmentFilter, employees, positionFilter]
   );
+
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE));
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return filteredEmployees.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [currentPage, filteredEmployees]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [departmentFilter, positionFilter, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const stats = useMemo(() => {
     const totalSalary = employees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
@@ -384,7 +402,7 @@ export default function EmployeesPage() {
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {filteredEmployees.map((employee) => (
+                {paginatedEmployees.map((employee) => (
                   <Card key={employee.id} className="group rounded-md py-0 shadow-none">
                     <CardContent className="max-h-none p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -431,7 +449,7 @@ export default function EmployeesPage() {
                   <span>Salary</span>
                   <span className="text-right">Actions</span>
                 </div>
-                {filteredEmployees.map((employee) => (
+                {paginatedEmployees.map((employee) => (
                   <div
                     key={employee.id}
                     className="group grid min-w-[720px] grid-cols-[2fr_1.2fr_1.2fr_1fr_88px] items-center border-b px-4 py-3 last:border-b-0"
@@ -462,6 +480,18 @@ export default function EmployeesPage() {
               <div className="flex flex-1 items-center justify-center rounded-md border border-dashed p-8 text-sm text-muted-foreground">
                 No employees match the current filters.
               </div>
+            )}
+
+            {!isLoading && filteredEmployees.length > 0 && (
+              <ListPagination
+                currentCount={paginatedEmployees.length}
+                currentPage={currentPage}
+                isLoading={isFetching}
+                onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                onPreviousPage={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                totalCount={filteredEmployees.length}
+                totalPages={totalPages}
+              />
             )}
 
             {isFetching && !isLoading ? (

@@ -1,6 +1,13 @@
 import { privateApiInstance } from "@/Utils/ky";
 import type { ApiResponse, MenuCategory, MenuItem, PaginatedApiResponse } from "@/types/api";
 
+export interface MenuDashboard {
+  totalKitchens: number;
+  totalMenus: number;
+  totalMenuItems: number;
+  activeMenuItems: number;
+}
+
 export const createCategory = (body: unknown) => {
   const options =
     body instanceof FormData
@@ -71,3 +78,9 @@ export const updateMenuItem = (id: number, body: unknown) => {
     .patch(`core-app/menu/items/update/${id}`, options)
     .json<ApiResponse<MenuItem>>();
 };
+
+export const getMenuDashboard = () =>
+  privateApiInstance
+    .get("core-app/menu/dashboard")
+    .json<ApiResponse<MenuDashboard> | MenuDashboard>()
+    .then((response) => ("data" in response ? response.data : response));

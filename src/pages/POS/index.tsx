@@ -3,7 +3,7 @@
 import { memo, startTransition, useState, useMemo, useEffect, useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { NavLink } from "react-router";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -18,6 +18,7 @@ import useAuthenticationStore from "../../pages/Authentication/Store/authenticat
 import { privateApiInstance } from "../../Utils/ky";
 import { toast } from "sonner";
 import { getCategories } from "../../pages/Setup/Pages/Menu/Store/api";
+import { ListPagination } from "../../components/common/ListPagination";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -106,12 +107,10 @@ function useDebounce<T>(value: T, delay: number): T {
 type MenuItemsResponse = PaginatedApiResponse<MenuItem> | { results?: MenuItem[]; next?: string | null; currentPage?: number };
 
 // Custom Hook: useMenuItemsSearch
-function useMenuItemsSearch(searchTerm: string, category: string, pageSize: number = 24) {
-  return useInfiniteQuery<MenuItemsResponse, Error>({
-    queryKey: ["menu-items-search", searchTerm, category, pageSize],
-    initialPageParam: 1,
-    queryFn: async ({ signal, pageParam }) => {
-      const page = Number(pageParam) || 1;
+function useMenuItemsSearch(searchTerm: string, category: string, page: number, pageSize: number = 24) {
+  return useQuery<MenuItemsResponse, Error>({
+    queryKey: ["menu-items-search", searchTerm, category, page, pageSize],
+    queryFn: async ({ signal }) => {
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("limit", pageSize.toString());
@@ -124,15 +123,7 @@ function useMenuItemsSearch(searchTerm: string, category: string, pageSize: numb
 
       return response;
     },
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage.next) {
-        return undefined;
-      }
-
-      return "currentPage" in lastPage && typeof lastPage.currentPage === "number"
-        ? lastPage.currentPage + 1
-        : allPages.length + 1;
-    },
+    placeholderData: (previousData) => previousData,
     enabled: true,
   });
 }
@@ -314,6 +305,7 @@ const MenuItemCard = memo(function MenuItemCard({ item, onItemClick, eager = fal
 const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: MenuItem) => void }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 24;
 
   // Fetch categories for filtering
@@ -326,21 +318,26 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, selectedCategory]);
+
   // API query with debounced search and pagination
   const {
     data: menuData,
     isLoading,
     error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useMenuItemsSearch(debouncedSearchTerm, selectedCategory, pageSize);
+    isFetching,
+  } = useMenuItemsSearch(debouncedSearchTerm, selectedCategory, currentPage, pageSize);
 
   const filteredItems = useMemo(
-    () => menuData?.pages.flatMap((page) => extractPaginatedItems(page)) ?? [],
+    () => extractPaginatedItems(menuData),
     [menuData]
   );
   const visibleItems = filteredItems;
+  const totalCount = "totalCount" in (menuData ?? {}) ? menuData?.totalCount ?? filteredItems.length : filteredItems.length;
+  const totalPages = "totalPages" in (menuData ?? {}) ? menuData?.totalPages ?? 1 : 1;
+  const apiCurrentPage = "currentPage" in (menuData ?? {}) ? menuData?.currentPage ?? currentPage : currentPage;
 
   if (isLoading) {
     return (
@@ -465,17 +462,18 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
            ))}
          </div>
 
-         {/* Load More Button */}
-         {hasNextPage && (
-           <div className="flex justify-center mt-4 mb-4">
-             <Button
-               onClick={() => fetchNextPage()}
-               disabled={isFetchingNextPage}
-               variant="outline"
-             >
-               {isFetchingNextPage ? "Loading..." : "Load More Items"}
-             </Button>
-           </div>
+         {filteredItems.length > 0 && (
+          <div className="mt-4">
+            <ListPagination
+              currentCount={filteredItems.length}
+              currentPage={apiCurrentPage}
+              isLoading={isFetching}
+              onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+              onPreviousPage={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+              totalCount={totalCount}
+              totalPages={totalPages}
+            />
+          </div>
          )}
 
          {filteredItems.length === 0 && (

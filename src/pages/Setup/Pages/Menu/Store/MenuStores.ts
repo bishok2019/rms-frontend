@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { successFunction } from "@/components/common/Alert";
-import { createCategory, getCategories, updateCategory, createMenuItem, getMenuItems, updateMenuItem } from "./api";
+import { createCategory, getCategories, updateCategory, createMenuItem, getMenuItems, updateMenuItem, getMenuDashboard } from "./api";
+
+export const menuDashboardQueryKey = ["menu", "dashboard"] as const;
 
 export const categoryQueryKeys = {
   all: ["category"] as const,
@@ -22,6 +24,7 @@ export const useCreateCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: menuDashboardQueryKey });
       successFunction("Category created successfully.");
     },
   });
@@ -35,15 +38,17 @@ export const useUpdateCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: menuDashboardQueryKey });
       successFunction("Category updated successfully.");
     },
   });
 };
 
-export const useCategories = () => {
+export const useCategories = (enabled: boolean = true) => {
   return useQuery({
     queryKey: categoryQueryKeys.list(),
     queryFn: () => getCategories(),
+    enabled,
   });
 };
 
@@ -55,6 +60,7 @@ export const useCreateMenuItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: itemQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: menuDashboardQueryKey });
       successFunction("Menu item created successfully.");
     },
   });
@@ -76,7 +82,15 @@ export const useUpdateMenuItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: itemQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: menuDashboardQueryKey });
       successFunction("Menu item updated successfully.");
     },
+  });
+};
+
+export const useMenuDashboard = () => {
+  return useQuery({
+    queryKey: menuDashboardQueryKey,
+    queryFn: () => getMenuDashboard(),
   });
 };

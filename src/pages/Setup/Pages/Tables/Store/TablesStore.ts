@@ -3,11 +3,15 @@ import {
   createDiningTable,
   createSection,
   getDiningTables,
+  getDiningTableDashboard,
   getSections,
   updateSection,
   updateDiningTable,
 } from "./api";
 import { errorFunction, successFunction } from "@/components/common/Alert";
+
+export const diningTableDashboardQueryKey = ["dining-table", "dashboard"] as const;
+
 export const sectionQueryKeys = {
   all: ["sections"] as const,
   list: () => [...sectionQueryKeys.all, "list"] as const,
@@ -28,6 +32,7 @@ export const useCreateSection = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sectionQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: diningTableDashboardQueryKey });
       successFunction("Section created successfully.");
     },
     onError: (error: any) => {
@@ -50,6 +55,7 @@ export const useUpdateSection = () => {
       updateSection(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sectionQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: diningTableDashboardQueryKey });
       successFunction("Section updated successfully.");
     },
     onError: (error: any) => {
@@ -64,6 +70,7 @@ export const useCreateDiningTable = () => {
     mutationFn: (data: unknown) => createDiningTable(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: diningTableQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: diningTableDashboardQueryKey });
       successFunction("Table created successfully.");
     },
     onError: (error: any) => {
@@ -79,6 +86,7 @@ export const useUpdateDiningTable = () => {
       updateDiningTable(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: diningTableQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: diningTableDashboardQueryKey });
       successFunction("Table updated successfully.");
     },
     onError: (error: any) => {
@@ -95,5 +103,12 @@ export const useDiningTables = (
     queryKey: diningTableQueryKeys.list(params),
     queryFn: () => getDiningTables(params),
     enabled,
+  });
+};
+
+export const useDiningTableDashboard = () => {
+  return useQuery({
+    queryKey: diningTableDashboardQueryKey,
+    queryFn: getDiningTableDashboard,
   });
 };
