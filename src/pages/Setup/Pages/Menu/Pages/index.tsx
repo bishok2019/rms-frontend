@@ -37,11 +37,14 @@ import { useKitchens } from "../../Kitchen/Store/KitchenStores";
 import CreateCategory from "./CreateCategory";
 import CreateItem from "./CreateItem";
 import MenuCategoryDashboard from "@/components/MenuCategoryDashboard";
+import { ListPagination } from "@/components/common/ListPagination";
 import type { MenuCategory, MenuItem, NamedRelation } from "@/types/api";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "grid" | "list";
 type MenuTab = "categories" | "items";
+const MENU_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
 
 const sampleItems: MenuItem[] = [
   {
@@ -317,15 +320,25 @@ export default function MenuSetup() {
   const [itemAvailabilityFilter, setItemAvailabilityFilter] = useState("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [kitchenOptionsEnabled, setKitchenOptionsEnabled] = useState(false);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
+  const [categoryPageSize, setCategoryPageSize] = useState(MENU_PAGE_SIZE);
+  const [itemPageSize, setItemPageSize] = useState(MENU_PAGE_SIZE);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const shouldLoadCategories = activeTab === "categories" || openCategory || openItem;
   const shouldLoadMenuItems = activeTab === "items";
   const shouldLoadKitchens = activeTab === "items" && kitchenOptionsEnabled;
 
-  const { data: categoriesData } = useCategories(shouldLoadCategories);
+  const { data: categoriesData, isFetching: isFetchingCategories } = useCategories(shouldLoadCategories, {
+    page: categoryPage,
+    page_size: categoryPageSize,
+  });
   const { data: kitchensData } = useKitchens(shouldLoadKitchens);
-  const { data: menuItemsData } = useMenuItems(shouldLoadMenuItems);
+  const { data: menuItemsData, isFetching: isFetchingMenuItems } = useMenuItems(shouldLoadMenuItems, {
+    page: itemPage,
+    page_size: itemPageSize,
+  });
   const { data: dashboardData } = useMenuDashboard();
 
   const apiCategories = categoriesData?.data ?? [];
@@ -420,6 +433,7 @@ export default function MenuSetup() {
     itemCategoryFilter !== "all" ||
     itemKitchenFilter !== "all" ||
     itemAvailabilityFilter !== "all";
+  const activePaginationData = activeTab === "items" ? menuItemsData : categoriesData;
 
   const createMenuItemMutation = useCreateMenuItem();
   const updateMenuItemMutation = useUpdateMenuItem();
@@ -565,31 +579,39 @@ export default function MenuSetup() {
           </div>
 
           <div className="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-center md:justify-between">
-            <div className="inline-flex w-fit rounded-md border border-border bg-muted p-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("categories")}
-                className={cn(
-                  "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
-                  activeTab === "categories"
-                    ? "bg-background text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Menu
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("items")}
-                className={cn(
-                  "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
-                  activeTab === "items"
-                    ? "bg-background text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Menu Items
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex w-fit rounded-md border border-border bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("categories")}
+                  className={cn(
+                    "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
+                    activeTab === "categories"
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Menu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("items")}
+                  className={cn(
+                    "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
+                    activeTab === "items"
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Menu Items
+                </button>
+              </div>
+              {activePaginationData ? (
+                <PaginationMeta
+                  currentCount={activePaginationData.currentCount}
+                  totalCount={activePaginationData.totalCount}
+                />
+              ) : null}
             </div>
 
             {activeTab === "items" ? (
@@ -729,10 +751,48 @@ export default function MenuSetup() {
                 </div>
               )}
             </div>
+            {menuItemsData ? (
+              <ListPagination
+                currentCount={menuItemsData.currentCount}
+                currentPage={menuItemsData.currentPage}
+                isLoading={isFetchingMenuItems}
+                onNextPage={() => setItemPage((page) => page + 1)}
+                onPageSizeChange={(pageSize) => {
+                  setItemPage(1);
+                  setItemPageSize(pageSize);
+                }}
+                onPreviousPage={() => setItemPage((page) => Math.max(1, page - 1))}
+                pageSize={itemPageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                showSummary={false}
+                totalCount={menuItemsData.totalCount}
+                totalPages={menuItemsData.totalPages}
+              />
+            ) : null}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <MenuCategoryDashboard categories={categoriesForForms} sendPrompt={sendPrompt} />
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <MenuCategoryDashboard categories={categoriesForForms} sendPrompt={sendPrompt} />
+            </div>
+            {categoriesData ? (
+              <ListPagination
+                currentCount={categoriesData.currentCount}
+                currentPage={categoriesData.currentPage}
+                isLoading={isFetchingCategories}
+                onNextPage={() => setCategoryPage((page) => page + 1)}
+                onPageSizeChange={(pageSize) => {
+                  setCategoryPage(1);
+                  setCategoryPageSize(pageSize);
+                }}
+                onPreviousPage={() => setCategoryPage((page) => Math.max(1, page - 1))}
+                pageSize={categoryPageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                showSummary={false}
+                totalCount={categoriesData.totalCount}
+                totalPages={categoriesData.totalPages}
+              />
+            ) : null}
           </div>
         )}
 
@@ -886,6 +946,21 @@ function Tag({ children, tone }: { children: string; tone: "category" | "kitchen
     >
       <span className="truncate">{children}</span>
     </span>
+  );
+}
+
+function PaginationMeta({
+  currentCount,
+  totalCount,
+}: {
+  currentCount: number;
+  totalCount: number;
+}) {
+  return (
+    <div className="text-base font-medium text-muted-foreground">
+      Showing <span className="text-foreground">{currentCount}</span> of{" "}
+      <span className="text-foreground">{totalCount}</span>
+    </div>
   );
 }
 

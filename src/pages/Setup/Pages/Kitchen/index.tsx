@@ -17,6 +17,7 @@ import {
 
 import { useTheme } from "@/contexts/theme-context";
 
+import { ListPagination } from "@/components/common/ListPagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +74,8 @@ type CategoryStatus = "Active" | "Inactive";
 type OrderStatus = "pending" | "preparing" | "ready" | "served" | "cancelled";
 type DietaryType = "Vegetarian" | "Non-Vegetarian" | "Vegan" | "Gluten Free";
 type SpiceLevel = "none" | "mild" | "medium" | "hot" | "extra_hot";
+const KITCHEN_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
 
 type KitchenCategory = {
   id: number;
@@ -267,6 +270,21 @@ function CountBadge({ children }: { children: React.ReactNode }) {
     <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)]">
       {children}
     </span>
+  );
+}
+
+function PaginationMeta({
+  currentCount,
+  totalCount,
+}: {
+  currentCount: number;
+  totalCount: number;
+}) {
+  return (
+    <div className="pb-3 text-[13px] font-medium text-[var(--color-text-secondary)] md:pb-3 md:pr-1">
+      Showing <span className="text-[var(--color-text-primary)]">{currentCount}</span> of{" "}
+      <span className="text-[var(--color-text-primary)]">{totalCount}</span>
+    </div>
   );
 }
 
@@ -811,9 +829,19 @@ export default function KitchenPage() {
   const [kitchenFilter, setKitchenFilter] = useState<string>("all");
   const [categoryOptionsEnabled, setCategoryOptionsEnabled] = useState(false);
   const [kitchenOptionsEnabled, setKitchenOptionsEnabled] = useState(false);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [kitchenPage, setKitchenPage] = useState(1);
+  const [categoryPageSize, setCategoryPageSize] = useState(KITCHEN_PAGE_SIZE);
+  const [kitchenPageSize, setKitchenPageSize] = useState(KITCHEN_PAGE_SIZE);
 
-  const categoriesQuery = useKitchenCategories(activeTab === "categories" || categoryOptionsEnabled);
-  const kitchensQuery = useKitchens(activeTab === "kitchens" || kitchenOptionsEnabled);
+  const categoriesQuery = useKitchenCategories(activeTab === "categories" || categoryOptionsEnabled, {
+    page: categoryPage,
+    page_size: categoryPageSize,
+  });
+  const kitchensQuery = useKitchens(activeTab === "kitchens" || kitchenOptionsEnabled, {
+    page: kitchenPage,
+    page_size: kitchenPageSize,
+  });
   const createCategoryMutation = useCreateKitchenCategory();
   const updateCategoryMutation = useUpdateKitchenCategory();
   const createKitchenMutation = useCreateKitchen();
@@ -883,6 +911,8 @@ export default function KitchenPage() {
 
     return kitchenOptions.find(k => k.id.toString() === kitchenFilter)?.name || "Unknown kitchen";
   }, [kitchenFilter, kitchenOptions]);
+  const activePaginationData =
+    activeTab === "categories" ? categoriesQuery.data : activeTab === "kitchens" ? kitchensQuery.data : null;
 
   const addButtonLabel =
     activeTab === "categories" ? "Add category" : activeTab === "kitchens" ? "Add kitchen" : "";
@@ -1008,60 +1038,68 @@ export default function KitchenPage() {
         </header>
 
         <nav className="relative border-b-[0.5px] border-[var(--color-border-tertiary)]">
-          <div className="flex min-h-11 items-end gap-1 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab("categories")}
-              className={cn(
-                "flex h-11 items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition-colors",
-                activeTab === "categories"
-                  ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
-                  : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              )}
-            >
-              <Grid3X3 className="h-4 w-4" />
-              Categories
-              <CountBadge>{categories.length}</CountBadge>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("kitchens")}
-              className={cn(
-                "flex h-11 items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition-colors",
-                activeTab === "kitchens"
-                  ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
-                  : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              )}
-            >
-              <CookingPot className="h-4 w-4" />
-              Kitchens
-              <CountBadge>{kitchens.length}</CountBadge>
-            </button>
-            {ordersKitchen && (
-              <div
+          <div className="flex min-h-11 flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div className="flex min-h-11 items-end gap-1 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab("categories")}
                 className={cn(
-                  "ml-2 flex h-10 items-center gap-2 rounded-t-[var(--border-radius-md)] border-x-[0.5px] border-t-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 text-[13px]",
-                  activeTab === "orders" ? "translate-y-px text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
+                  "flex h-11 items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition-colors",
+                  activeTab === "categories"
+                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
+                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 )}
               >
-                <button type="button" onClick={() => setActiveTab("orders")} className="font-medium">
-                  {ordersKitchen.name} orders
-                </button>
-                {pendingOrders > 0 && (
-                  <Badge className="border-0 bg-[var(--color-background-warning)] px-2 py-0.5 text-[11px] text-[var(--color-text-warning)]">
-                    {pendingOrders} pending
-                  </Badge>
+                <Grid3X3 className="h-4 w-4" />
+                Categories
+                <CountBadge>{categories.length}</CountBadge>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("kitchens")}
+                className={cn(
+                  "flex h-11 items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition-colors",
+                  activeTab === "kitchens"
+                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
+                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 )}
-                <button
-                  type="button"
-                  aria-label="Close orders tab"
-                  onClick={closeOrdersTab}
-                  className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-background-secondary)] hover:text-[var(--color-text-primary)]"
+              >
+                <CookingPot className="h-4 w-4" />
+                Kitchens
+                <CountBadge>{kitchens.length}</CountBadge>
+              </button>
+              {ordersKitchen && (
+                <div
+                  className={cn(
+                    "ml-2 flex h-10 items-center gap-2 rounded-t-[var(--border-radius-md)] border-x-[0.5px] border-t-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 text-[13px]",
+                    activeTab === "orders" ? "translate-y-px text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
+                  )}
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
+                  <button type="button" onClick={() => setActiveTab("orders")} className="font-medium">
+                    {ordersKitchen.name} orders
+                  </button>
+                  {pendingOrders > 0 && (
+                    <Badge className="border-0 bg-[var(--color-background-warning)] px-2 py-0.5 text-[11px] text-[var(--color-text-warning)]">
+                      {pendingOrders} pending
+                    </Badge>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Close orders tab"
+                    onClick={closeOrdersTab}
+                    className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-background-secondary)] hover:text-[var(--color-text-primary)]"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            {activePaginationData ? (
+              <PaginationMeta
+                currentCount={activePaginationData.currentCount}
+                totalCount={activePaginationData.totalCount}
+              />
+            ) : null}
           </div>
         </nav>
 
@@ -1114,6 +1152,24 @@ export default function KitchenPage() {
                   </TableBody>
                 </Table>
               </div>
+              {categoriesQuery.data ? (
+                <ListPagination
+                  currentCount={categoriesQuery.data.currentCount}
+                  currentPage={categoriesQuery.data.currentPage}
+                  isLoading={categoriesQuery.isFetching}
+                  onNextPage={() => setCategoryPage((page) => page + 1)}
+                  onPageSizeChange={(pageSize) => {
+                    setCategoryPage(1);
+                    setCategoryPageSize(pageSize);
+                  }}
+                  onPreviousPage={() => setCategoryPage((page) => Math.max(1, page - 1))}
+                  pageSize={categoryPageSize}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  showSummary={false}
+                  totalCount={categoriesQuery.data.totalCount}
+                  totalPages={categoriesQuery.data.totalPages}
+                />
+              ) : null}
             </section>
           )}
 
@@ -1181,6 +1237,24 @@ export default function KitchenPage() {
                   );
                 })}
               </div>
+              {kitchensQuery.data ? (
+                <ListPagination
+                  currentCount={kitchensQuery.data.currentCount}
+                  currentPage={kitchensQuery.data.currentPage}
+                  isLoading={kitchensQuery.isFetching}
+                  onNextPage={() => setKitchenPage((page) => page + 1)}
+                  onPageSizeChange={(pageSize) => {
+                    setKitchenPage(1);
+                    setKitchenPageSize(pageSize);
+                  }}
+                  onPreviousPage={() => setKitchenPage((page) => Math.max(1, page - 1))}
+                  pageSize={kitchenPageSize}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  showSummary={false}
+                  totalCount={kitchensQuery.data.totalCount}
+                  totalPages={kitchensQuery.data.totalPages}
+                />
+              ) : null}
             </section>
           )}
 

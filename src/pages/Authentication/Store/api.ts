@@ -175,6 +175,8 @@ export interface UpdateUserData {
   isActive?: boolean;
   userType?: string;
   password?: string;
+  roles?: number[];
+  permissions?: number[];
 }
 
 export interface CreateUserData {

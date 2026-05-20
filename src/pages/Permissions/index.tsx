@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink } from "react-router";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ListPagination } from "@/components/common/ListPagination";
 import { cn } from "@/lib/utils";
 import { privateApiInstance } from "@/Utils/ky";
 import type { PaginatedApiResponse } from "@/types/api";
@@ -30,6 +32,11 @@ interface Permission {
   category?: string | number;
 }
 
+type PermissionListResponse = Partial<PaginatedApiResponse<Permission>> & {
+  count?: number;
+  results?: Permission[];
+};
+
 const getItems = <T,>(payload: Partial<PaginatedApiResponse<T>> & { results?: T[] }): T[] => {
   if (Array.isArray(payload.results)) return payload.results;
   if (Array.isArray(payload.data)) return payload.data;
@@ -39,6 +46,8 @@ const getItems = <T,>(payload: Partial<PaginatedApiResponse<T>> & { results?: T[
 const getPermissionCode = (permission: Permission) =>
   permission.codeName ?? permission.codename ?? `ID ${permission.id}`;
 
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+
 export default function PermissionsPage() {
   const [categories, setCategories] = useState<PermissionCategory[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -47,6 +56,12 @@ export default function PermissionsPage() {
   const [permissionSearch, setPermissionSearch] = useState("");
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [categoryPageSize, setCategoryPageSize] = useState(10);
+  const [permissionPage, setPermissionPage] = useState(1);
+  const [permissionPageSize, setPermissionPageSize] = useState(10);
+  const [permissionTotalCount, setPermissionTotalCount] = useState(0);
+  const [permissionTotalPages, setPermissionTotalPages] = useState(1);
 
   const filteredCategories = useMemo(() => {
     const query = categorySearch.trim().toLowerCase();
@@ -74,9 +89,16 @@ export default function PermissionsPage() {
     );
   }, [permissionSearch, permissions]);
 
+  const categoryTotalPages = Math.max(1, Math.ceil(filteredCategories.length / categoryPageSize));
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (categoryPage - 1) * categoryPageSize;
+    return filteredCategories.slice(startIndex, startIndex + categoryPageSize);
+  }, [categoryPage, categoryPageSize, filteredCategories]);
+
   useEffect(() => {
     fetchCategories();
-  }, []);
+    fetchPermissions(undefined, 1, permissionPageSize);
+  }, [permissionPageSize]);
 
   const fetchCategories = async () => {
     setLoadingCategories(true);
@@ -96,14 +118,22 @@ export default function PermissionsPage() {
     }
   };
 
-  const fetchPermissions = async (categoryId: number) => {
+  const fetchPermissions = async (categoryId?: number, page = 1, pageSize = 10) => {
     setLoadingPermissions(true);
     try {
+      const params = new URLSearchParams();
+      params.set("page", String(page));
+      params.set("page_size", String(pageSize));
+      if (categoryId) params.set("category", String(categoryId));
+
       const response = await privateApiInstance.get(
-        `auth-app/permissions/permission/list?category=${categoryId}`
+        `auth-app/permissions/permission/list?${params.toString()}`
       );
-      const data = (await response.json()) as Partial<PaginatedApiResponse<Permission>>;
-      setPermissions(getItems(data));
+      const data = (await response.json()) as PermissionListResponse;
+      const nextPermissions = getItems(data);
+      setPermissions(nextPermissions);
+      setPermissionTotalCount(data.totalCount ?? data.count ?? nextPermissions.length);
+      setPermissionTotalPages(data.totalPages ?? 1);
     } finally {
       setLoadingPermissions(false);
     }
@@ -112,7 +142,15 @@ export default function PermissionsPage() {
   const handleCategoryClick = (category: PermissionCategory) => {
     setSelectedCategory(category);
     setPermissionSearch("");
-    fetchPermissions(category.id);
+    setPermissionPage(1);
+    fetchPermissions(category.id, 1, permissionPageSize);
+  };
+
+  const handleShowAllPermissions = () => {
+    setSelectedCategory(null);
+    setPermissionSearch("");
+    setPermissionPage(1);
+    fetchPermissions(undefined, 1, permissionPageSize);
   };
 
   return (
@@ -184,7 +222,7 @@ export default function PermissionsPage() {
                     No categories found
                   </div>
                 ) : (
-                  filteredCategories.map((category) => {
+                  paginatedCategories.map((category) => {
                     const isSelected = selectedCategory?.id === category.id;
 
                     return (
@@ -212,46 +250,75 @@ export default function PermissionsPage() {
                         ) : null}
                       </button>
                     );
-                  })
-                )}
-              </div>
-            </section>
+                   })
+                 )}
+               </div>
 
-            <section className="flex min-h-0 flex-col overflow-hidden">
-              <div className="border-b border-border px-4 py-3">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    {selectedCategory ? selectedCategory.name : "Permissions"}
-                  </span>
-                  <Badge variant="secondary" className="rounded-full text-[10px]">
-                    {filteredPermissions.length} permissions
-                  </Badge>
-                </div>
+               {filteredCategories.length > 0 && (
+                 <div className="shrink-0 px-3 pb-3">
+                   <ListPagination
+                     currentCount={paginatedCategories.length}
+                     currentPage={categoryPage}
+                     isLoading={loadingCategories}
+                     onNextPage={() => setCategoryPage((page) => Math.min(page + 1, categoryTotalPages))}
+                     onPageSizeChange={(pageSize) => {
+                       setCategoryPage(1);
+                       setCategoryPageSize(pageSize);
+                     }}
+                     onPreviousPage={() => setCategoryPage((page) => Math.max(1, page - 1))}
+                     pageSize={categoryPageSize}
+                     pageSizeOptions={PAGE_SIZE_OPTIONS}
+                     totalCount={filteredCategories.length}
+                     totalPages={categoryTotalPages}
+                   />
+                 </div>
+               )}
+             </section>
+
+             <section className="flex min-h-0 flex-col overflow-hidden">
+               <div className="border-b border-border px-4 py-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                        {selectedCategory ? selectedCategory.name : "All Permissions"}
+                      </span>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       className={cn(
+                         "h-6 px-2 text-[10px]",
+                         !selectedCategory &&
+                           "border-emerald-500 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                       )}
+                       onClick={handleShowAllPermissions}
+                     >
+                       All Categories
+                     </Button>
+                   </div>
+                   <Badge variant="secondary" className="rounded-full text-[10px]">
+                     {filteredPermissions.length} permissions
+                   </Badge>
+                 </div>
                 <div className="relative flex h-8 items-center rounded-md border border-border bg-background transition-colors focus-within:border-emerald-500">
                   <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     className="h-8 border-0 bg-transparent pl-8 text-xs text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
                     placeholder="Search permissions..."
-                    value={permissionSearch}
-                    onChange={(event) => setPermissionSearch(event.target.value)}
-                    disabled={!selectedCategory}
-                  />
+                     value={permissionSearch}
+                     onChange={(event) => setPermissionSearch(event.target.value)}
+                   />
                 </div>
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                {!selectedCategory ? (
-                  <div className="flex h-28 items-center justify-center text-sm text-muted-foreground">
-                    Select a category to view permissions
-                  </div>
-                ) : loadingPermissions ? (
+                {loadingPermissions ? (
                   <div className="flex h-28 items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading permissions...
                   </div>
                 ) : filteredPermissions.length === 0 ? (
                   <div className="flex h-28 items-center justify-center text-sm text-muted-foreground">
-                    No permissions found for this category
+                    No permissions found
                   </div>
                 ) : (
                   <div className="grid gap-2">
@@ -281,15 +348,44 @@ export default function PermissionsPage() {
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            </section>
-          </div>
+                 )}
+               </div>
+
+               {permissionTotalCount > 0 && (
+                 <div className="shrink-0 px-3 pb-3">
+                   <ListPagination
+                     currentCount={permissions.length}
+                     currentPage={permissionPage}
+                     isLoading={loadingPermissions}
+                     onNextPage={() => {
+                       const nextPage = Math.min(permissionPage + 1, permissionTotalPages);
+                       setPermissionPage(nextPage);
+                       fetchPermissions(selectedCategory?.id, nextPage, permissionPageSize);
+                     }}
+                     onPageSizeChange={(pageSize) => {
+                       setPermissionPage(1);
+                       setPermissionPageSize(pageSize);
+                       fetchPermissions(selectedCategory?.id, 1, pageSize);
+                     }}
+                     onPreviousPage={() => {
+                       const prevPage = Math.max(1, permissionPage - 1);
+                       setPermissionPage(prevPage);
+                       fetchPermissions(selectedCategory?.id, prevPage, permissionPageSize);
+                     }}
+                     pageSize={permissionPageSize}
+                     pageSizeOptions={PAGE_SIZE_OPTIONS}
+                     totalCount={permissionTotalCount}
+                     totalPages={permissionTotalPages}
+                   />
+                 </div>
+               )}
+             </section>
+           </div>
 
           <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-t border-border bg-background px-3 py-1">
             <div className="inline-flex max-w-full items-center rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
               <span className="truncate leading-none">
-                <strong className="text-foreground">{selectedCategory?.name ?? "No category selected"}</strong>
+                <strong className="text-foreground">{selectedCategory?.name ?? "All Categories"}</strong>
                 {" · "}
                 {filteredPermissions.length} permissions
               </span>

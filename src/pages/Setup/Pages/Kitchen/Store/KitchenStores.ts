@@ -9,6 +9,7 @@ import {
   getKitchens,
   updateKitchen,
 } from "./api";
+import type { KitchenListParams } from "./api";
 
 const KITCHEN_LIST_STALE_TIME = 5 * 60 * 1000;
 
@@ -20,7 +21,7 @@ export const kitchenCategoryQueryKeys = {
 
 export const kitchenQueryKeys = {
   all: ["kitchen"] as const,
-  list: (params?: { category?: number | string; search?: string }) =>
+  list: (params?: { category?: number | string; search?: string } & KitchenListParams) =>
     [...kitchenQueryKeys.all, "list", params] as const,
   detail: (id: number) => [...kitchenQueryKeys.all, "detail", id] as const,
 };
@@ -57,10 +58,10 @@ export const useUpdateKitchenCategory = () => {
   });
 };
 
-export const useKitchenCategories = (enabled: boolean = true) => {
+export const useKitchenCategories = (enabled: boolean = true, params?: KitchenListParams) => {
   return useQuery({
-    queryKey: kitchenCategoryQueryKeys.list(),
-    queryFn: getKitchenCategories,
+    queryKey: [...kitchenCategoryQueryKeys.list(), params] as const,
+    queryFn: () => getKitchenCategories(params),
     enabled,
     staleTime: KITCHEN_LIST_STALE_TIME,
   });
@@ -100,7 +101,7 @@ export const useUpdateKitchen = () => {
 
 export const useKitchens = (
   enabled: boolean = true,
-  params?: { category?: number | string; search?: string }
+  params?: { category?: number | string; search?: string } & KitchenListParams
 ) => {
   return useQuery({
     queryKey: kitchenQueryKeys.list(params),

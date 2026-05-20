@@ -27,6 +27,8 @@ interface OrderMetadata {
   previous: string | null;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+
 const hasDisplayText = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
@@ -66,6 +68,7 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [metadata, setMetadata] = useState<OrderMetadata | null>(null);
 
   // Fetch dining tables for filter dropdown
@@ -81,7 +84,7 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
       console.log("OrderList: Making API call to getOrders");
       const response = await ordersApi.getOrders({
         page,
-        page_size: 50,
+        page_size: pageSize,
         search: searchTerm || undefined,
         status: statusFilter,
         served_by: servedByFilter,
@@ -115,7 +118,7 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, statusFilter, servedByFilter, customerFilter, tableFilter, paymentMethodFilter, paymentStatusFilter, dateFilter, setOrders, setLoading, clearError, setError]);
+  }, [searchTerm, statusFilter, servedByFilter, customerFilter, tableFilter, paymentMethodFilter, paymentStatusFilter, dateFilter, pageSize, setOrders, setLoading, clearError, setError]);
 
   useEffect(() => {
     console.log("OrderList: useEffect triggered");
@@ -205,8 +208,8 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
   console.log("OrderList rendering content", { orders, isLoading, filteredOrders: filteredOrders.length });
 
   return (
-    <Card className="h-full overflow-auto">
-      <CardHeader className="pb-3">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
+      <CardHeader className="shrink-0 pb-3">
         <CardTitle className="text-lg">Orders</CardTitle>
         <div className="space-y-3">
           <div className="relative flex-1">
@@ -334,22 +337,28 @@ export function OrderList({ onOrderSelect, refreshTrigger }: OrderListProps) {
             currentPage={metadata.currentPage}
             isLoading={isLoading}
             onNextPage={handleNextPage}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize);
+              setCurrentPage(1);
+            }}
             onPreviousPage={handlePreviousPage}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
             totalCount={metadata.totalCount}
             totalPages={metadata.totalPages}
           />
         )}
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="min-h-0 max-h-none flex-1 overflow-y-auto p-0">
         {isLoading ? (
-          <div className="flex items-center justify-center p-8">
+          <div className="flex h-full items-center justify-center p-8">
             <Loader2 className="h-6 w-6 animate-spin" />
             <span className="ml-2">Loading orders...</span>
           </div>
         ) : (
-          <div className="h-full">
+          <div className="min-h-full">
             {filteredOrders.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
+              <div className="flex h-full items-center justify-center p-8 text-center text-muted-foreground">
                 No orders found
               </div>
             ) : (

@@ -8,6 +8,11 @@ export interface MenuDashboard {
   activeMenuItems: number;
 }
 
+export interface MenuListParams {
+  page?: number;
+  page_size?: number;
+}
+
 export const createCategory = (body: unknown) => {
   const options =
     body instanceof FormData
@@ -21,9 +26,17 @@ export const createCategory = (body: unknown) => {
     .json<ApiResponse<MenuCategory>>();
 };
 
-export const getCategories = async () => {
+const buildMenuListQuery = (params?: MenuListParams) => {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", params.page.toString());
+  if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
+};
+
+export const getCategories = async (params?: MenuListParams) => {
   const response = await privateApiInstance
-    .get("core-app/menu/list")
+    .get(`core-app/menu/list${buildMenuListQuery(params)}`)
     .json<PaginatedApiResponse<MenuCategory>>();
   return response;
 };
@@ -54,9 +67,9 @@ export const createMenuItem = (body: unknown) => {
     .json<ApiResponse<MenuItem>>();
 };
 
-export const getMenuItems = async () => {
+export const getMenuItems = async (params?: MenuListParams) => {
   const response = await privateApiInstance
-    .get("core-app/menu/items/list")
+    .get(`core-app/menu/items/list${buildMenuListQuery(params)}`)
     .json<PaginatedApiResponse<MenuItem>>();
   return response;
 };

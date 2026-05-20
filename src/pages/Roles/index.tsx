@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { successFunction } from "@/components/common/Alert";
+import { ListPagination } from "@/components/common/ListPagination";
 import { cn } from "@/lib/utils";
 import { privateApiInstance } from "@/Utils/ky";
 import type { PaginatedApiResponse } from "@/types/api";
@@ -38,6 +39,7 @@ import {
   fetchUsers,
   updateUser,
   type User,
+  type UserFilters,
 } from "@/pages/Authentication/Store/api";
 import { Check, ChevronDown, Loader2, Plus, RotateCcw, Save, Search, ShieldCheck, Users } from "lucide-react";
 
@@ -90,6 +92,8 @@ const initialFormState: RoleFormState = {
   assignedUserId: "",
 };
 
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+
 const getItems = <T,>(payload: PaginatedRoleResponse<T>): T[] => {
   if (Array.isArray(payload.results)) return payload.results;
   if (Array.isArray(payload.data)) return payload.data;
@@ -131,13 +135,15 @@ export default function RolesPage() {
   const [saving, setSaving] = useState(false);
   const [usersLoading, setUsersLoading] = useState(true);
   const [accessSaving, setAccessSaving] = useState(false);
-  const [permissionLoading, setPermissionLoading] = useState(true);
+  const [permissionLoading, setPermissionLoading] = useState(false);
   const [accessPermissionLoading, setAccessPermissionLoading] = useState(true);
-  const [categoryLoading, setCategoryLoading] = useState(true);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [selectedPermissionCategory, setSelectedPermissionCategory] = useState("all");
   const [permissionSearch, setPermissionSearch] = useState("");
   const [accessPermissions, setAccessPermissions] = useState<Permission[]>([]);
   const [accessPermissionCount, setAccessPermissionCount] = useState(0);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  const [permissionCategoriesLoaded, setPermissionCategoriesLoaded] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [formData, setFormData] = useState<RoleFormState>(initialFormState);
@@ -145,6 +151,14 @@ export default function RolesPage() {
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
   const [collapsedPermissionCategories, setCollapsedPermissionCategories] = useState<string[]>([]);
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
+  const [userTotalCount, setUserTotalCount] = useState(0);
+  const [userTotalPages, setUserTotalPages] = useState(1);
+  const [rolePage, setRolePage] = useState(1);
+  const [rolePageSize, setRolePageSize] = useState(10);
+  const [permissionPage, setPermissionPage] = useState(1);
+  const [permissionPageSize, setPermissionPageSize] = useState(10);
 
   const roleEndpoint = "auth-app/role";
 
@@ -158,25 +172,14 @@ export default function RolesPage() {
     [selectedUserId, users]
   );
 
-  const filteredUsers = useMemo(() => {
-    const query = userSearch.trim().toLowerCase();
-    if (!query) return users;
+  // users are now fetched server-side with pagination + search
+  const displayedUsers = users;
 
-    return users.filter((user) => {
-      const searchText = [
-        user.username,
-        user.email,
-        user.mobileNo,
-        user.userType,
-        String(user.id),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchText.includes(query);
-    });
-  }, [userSearch, users]);
+  const roleTotalPages = Math.max(1, Math.ceil(roleOptions.length / rolePageSize));
+  const paginatedRoles = useMemo(() => {
+    const startIndex = (rolePage - 1) * rolePageSize;
+    return roleOptions.slice(startIndex, startIndex + rolePageSize);
+  }, [roleOptions, rolePage, rolePageSize]);
 
   const selectedRolePermissionIds = useMemo(() => {
     const roleIds = new Set(selectedRoleIds);
@@ -225,6 +228,8 @@ export default function RolesPage() {
     );
   }, [accessPermissions, getPermissionCategoryName]);
 
+  const accessPermissionTotalPages = Math.max(1, Math.ceil(accessPermissionCount / permissionPageSize));
+
   const selectedRoleCount = selectedRoleIds.length;
   const selectedPermissionCount = new Set([
     ...selectedPermissionIds,
@@ -253,6 +258,8 @@ export default function RolesPage() {
   }, []);
 
   const fetchPermissions = useCallback(async () => {
+    if (permissionsLoaded) return;
+
     setPermissionLoading(true);
     try {
       const response = await privateApiInstance.get(
@@ -261,15 +268,19 @@ export default function RolesPage() {
       );
       const payload = (await response.json()) as PaginatedRoleResponse<Permission>;
       setPermissions(getItems(payload));
+      setPermissionsLoaded(true);
     } finally {
       setPermissionLoading(false);
     }
-  }, []);
+  }, [permissionsLoaded]);
 
   const fetchAccessPermissions = useCallback(async () => {
     setAccessPermissionLoading(true);
     try {
-      const searchParams = new URLSearchParams({ limit: "500" });
+      const searchParams = new URLSearchParams({
+        page: String(permissionPage),
+        page_size: String(permissionPageSize),
+      });
       const searchValue = permissionSearch.trim();
 
       if (selectedPermissionCategory !== "all") {
@@ -292,9 +303,11 @@ export default function RolesPage() {
     } finally {
       setAccessPermissionLoading(false);
     }
-  }, [permissionSearch, selectedPermissionCategory]);
+  }, [permissionPage, permissionPageSize, permissionSearch, selectedPermissionCategory]);
 
   const fetchPermissionCategories = useCallback(async () => {
+    if (permissionCategoriesLoaded) return;
+
     setCategoryLoading(true);
     try {
       const response = await privateApiInstance.get(
@@ -303,10 +316,11 @@ export default function RolesPage() {
       );
       const payload = (await response.json()) as PaginatedRoleResponse<PermissionCategory>;
       setPermissionCategories(getItems(payload));
+      setPermissionCategoriesLoaded(true);
     } finally {
       setCategoryLoading(false);
     }
-  }, []);
+  }, [permissionCategoriesLoaded]);
 
   const getPermissionIdsForRoles = useCallback((roleIds: number[], sourceRoles = roleOptions) => {
     const roleIdSet = new Set(roleIds);
@@ -337,12 +351,17 @@ export default function RolesPage() {
     );
   }, [getPermissionIdsForRoles, roleOptions]);
 
-  const fetchUserOptions = useCallback(async () => {
+  const fetchUserOptions = useCallback(async (page = 1, pageSize = 10, search = "") => {
     setUsersLoading(true);
     try {
-      const response = await fetchUsers();
+      const filters: UserFilters = { page, limit: pageSize };
+      const q = search.trim();
+      if (q) filters.username = q; // search on username (extendable)
+      const response = await fetchUsers(filters);
       const nextUsers = (response.data ?? []) as AccessUser[];
       setUsers(nextUsers);
+      setUserTotalCount(response.totalCount ?? nextUsers.length);
+      setUserTotalPages(response.totalPages ?? 1);
     } finally {
       setUsersLoading(false);
     }
@@ -404,11 +423,9 @@ export default function RolesPage() {
   };
 
   useEffect(() => {
-    fetchPermissionCategories();
-    fetchPermissions();
     fetchRoleOptions();
-    fetchUserOptions();
-  }, [fetchPermissionCategories, fetchPermissions, fetchRoleOptions, fetchUserOptions]);
+    fetchUserOptions(1, userPageSize, "");
+  }, [fetchRoleOptions, fetchUserOptions, userPageSize]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -417,6 +434,31 @@ export default function RolesPage() {
 
     return () => window.clearTimeout(timeoutId);
   }, [fetchAccessPermissions]);
+
+  useEffect(() => {
+    setPermissionPage(1);
+  }, [permissionSearch, selectedPermissionCategory]);
+
+  // Refetch users when page, pageSize or search changes (server-side)
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      fetchUserOptions(userPage, userPageSize, userSearch);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [userPage, userPageSize, userSearch, fetchUserOptions]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    if (userSearch) setUserPage(1);
+  }, [userSearch]);
+
+  useEffect(() => {
+    setUserPage((page) => Math.min(page, userTotalPages));
+  }, [userTotalPages]);
+
+  useEffect(() => {
+    setRolePage((page) => Math.min(page, roleTotalPages));
+  }, [roleTotalPages]);
 
   useEffect(() => {
     if (!selectedUserId && users.length > 0) {
@@ -445,6 +487,7 @@ export default function RolesPage() {
     setEditingRole(null);
     setFormData(initialFormState);
     setDialogOpen(true);
+    fetchPermissions();
   };
 
   const handleFormChange = (
@@ -587,7 +630,8 @@ export default function RolesPage() {
         </CardHeader>
 
         <CardContent className="flex max-h-none min-h-0 flex-1 flex-col overflow-hidden p-0">
-          <div className="grid min-h-0 flex-1 divide-y divide-border overflow-hidden lg:grid-cols-[240px_minmax(280px,1fr)_280px] lg:divide-x lg:divide-y-0">
+          {/* <div className="grid min-h-0 flex-1 divide-y divide-border overflow-hidden lg:grid-cols-[240px_minmax(280px,1fr)_280px] lg:divide-x lg:divide-y-0"> */}
+          <div className="grid min-h-0 flex-1 divide-y divide-border overflow-hidden lg:grid-cols-[350px_minmax(160px,1fr)_350px] lg:divide-x lg:divide-y-0">
             <section className="flex min-h-0 flex-col overflow-hidden">
               <div className="border-b border-border px-4 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
@@ -595,7 +639,7 @@ export default function RolesPage() {
                     Users
                   </span>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                    {filteredUsers.length} of {users.length}
+                     {displayedUsers.length} of {userTotalCount}
                   </span>
                 </div>
                 <div className="relative flex h-8 items-center rounded-md border border-border bg-background transition-colors focus-within:border-emerald-500">
@@ -614,12 +658,12 @@ export default function RolesPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading users...
                   </div>
-                ) : filteredUsers.length === 0 ? (
+                 ) : displayedUsers.length === 0 ? (
                   <div className="flex h-28 items-center justify-center text-sm text-muted-foreground">
                     No users found
                   </div>
                 ) : (
-                  filteredUsers.map((user) => {
+                   displayedUsers.map((user) => {
                     const isSelected = String(user.id) === selectedUserId;
 
                     return (
@@ -667,6 +711,25 @@ export default function RolesPage() {
                   })
                 )}
               </div>
+               {userTotalCount > 0 ? (
+                <div className="shrink-0 px-3 pb-3">
+                  <ListPagination
+                    currentCount={displayedUsers.length}
+                    currentPage={userPage}
+                    isLoading={usersLoading}
+                    onNextPage={() => setUserPage((page) => Math.min(page + 1, userTotalPages))}
+                    onPageSizeChange={(pageSize) => {
+                      setUserPage(1);
+                      setUserPageSize(pageSize);
+                    }}
+                    onPreviousPage={() => setUserPage((page) => Math.max(1, page - 1))}
+                    pageSize={userPageSize}
+                    pageSizeOptions={PAGE_SIZE_OPTIONS}
+                    totalCount={userTotalCount}
+                    totalPages={userTotalPages}
+                  />
+                </div>
+              ) : null}
             </section>
 
             <section className="flex min-h-0 flex-col overflow-hidden">
@@ -691,7 +754,7 @@ export default function RolesPage() {
                     No roles available
                   </div>
                 ) : (
-                  roleOptions.map((role) => {
+                  paginatedRoles.map((role) => {
                     const isSelected = selectedRoleIds.includes(role.id);
                     const previewPermissions = role.permissions.slice(0, 3);
 
@@ -762,6 +825,25 @@ export default function RolesPage() {
                   Add Role
                 </button>
               </div>
+              {roleOptions.length > 0 ? (
+                <div className="shrink-0 px-3 pb-3">
+                  <ListPagination
+                    currentCount={paginatedRoles.length}
+                    currentPage={rolePage}
+                    isLoading={rolesLoading}
+                    onNextPage={() => setRolePage((page) => Math.min(page + 1, roleTotalPages))}
+                    onPageSizeChange={(pageSize) => {
+                      setRolePage(1);
+                      setRolePageSize(pageSize);
+                    }}
+                    onPreviousPage={() => setRolePage((page) => Math.max(1, page - 1))}
+                    pageSize={rolePageSize}
+                    pageSizeOptions={PAGE_SIZE_OPTIONS}
+                    totalCount={roleOptions.length}
+                    totalPages={roleTotalPages}
+                  />
+                </div>
+              ) : null}
             </section>
 
             <section className="flex min-h-0 flex-col overflow-hidden">
@@ -770,25 +852,38 @@ export default function RolesPage() {
                     <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                       Permissions
                     </span>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={selectedPermissionCategory}
-                      onValueChange={setSelectedPermissionCategory}
-                      disabled={categoryLoading}
-                    >
-                      <SelectTrigger className="h-7 w-28 border-border bg-background px-2 text-xs text-muted-foreground shadow-none focus:border-emerald-500 focus:ring-0 data-[state=open]:border-emerald-500">
-                        <SelectValue placeholder={categoryLoading ? "Loading..." : "All"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {permissionCategories.map((category) => (
-                          <SelectItem key={category.id} value={String(category.id)}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                   <div className="flex items-center gap-1">
+                     <Select
+                       value={selectedPermissionCategory}
+                       onValueChange={setSelectedPermissionCategory}
+                       disabled={categoryLoading}
+                       onOpenChange={(open) => {
+                         if (open) fetchPermissionCategories();
+                       }}
+                     >
+                       <SelectTrigger className="h-7 w-28 border-border bg-background px-2 text-xs text-muted-foreground shadow-none focus:border-emerald-500 focus:ring-0 data-[state=open]:border-emerald-500">
+                         <SelectValue placeholder={categoryLoading ? "Loading..." : "All"} />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="all">All</SelectItem>
+                         {permissionCategories.map((category) => (
+                           <SelectItem key={category.id} value={String(category.id)}>
+                             {category.name}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                     {selectedPermissionCategory !== "all" && (
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         className="h-7 px-2 text-[10px]"
+                         onClick={() => setSelectedPermissionCategory("all")}
+                       >
+                         Clear
+                       </Button>
+                     )}
+                   </div>
                 </div>
                 <div className="relative flex h-8 items-center rounded-md border border-border bg-background transition-colors focus-within:border-emerald-500">
                   <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -881,6 +976,25 @@ export default function RolesPage() {
                   })
                 )}
               </div>
+              {accessPermissionCount > 0 ? (
+                <div className="shrink-0 px-3 pb-3">
+                  <ListPagination
+                    currentCount={accessPermissions.length}
+                    currentPage={permissionPage}
+                    isLoading={accessPermissionLoading}
+                    onNextPage={() => setPermissionPage((page) => Math.min(page + 1, accessPermissionTotalPages))}
+                    onPageSizeChange={(pageSize) => {
+                      setPermissionPage(1);
+                      setPermissionPageSize(pageSize);
+                    }}
+                    onPreviousPage={() => setPermissionPage((page) => Math.max(1, page - 1))}
+                    pageSize={permissionPageSize}
+                    pageSizeOptions={PAGE_SIZE_OPTIONS}
+                    totalCount={accessPermissionCount}
+                    totalPages={accessPermissionTotalPages}
+                  />
+                </div>
+              ) : null}
             </section>
           </div>
 

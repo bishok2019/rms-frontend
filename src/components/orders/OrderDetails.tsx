@@ -101,8 +101,8 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
 
   if (!order) {
     return (
-      <Card className="">
-        <CardContent className="flex items-center justify-center h-full">
+      <Card className="h-full min-h-0">
+        <CardContent className="flex h-full max-h-none items-center justify-center">
           <div className="text-center text-muted-foreground">
             <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Select an order to view details</p>
@@ -114,7 +114,7 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
   }
 
   return (
-    <div className="space-y-4 h-full">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       {/* Order Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -180,11 +180,11 @@ export function OrderDetails({ order, onEditItem }: OrderDetailsProps) {
 
 
       {/* Order Items */}
-      <Card className="h-96 flex flex-col overflow-hidden">
-        <CardHeader className="pb-0">
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <CardHeader className="shrink-0 pb-0">
           <CardTitle className="text-lg">Order Items</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
+        <CardContent className="min-h-0 max-h-none flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

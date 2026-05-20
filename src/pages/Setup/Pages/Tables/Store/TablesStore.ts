@@ -8,19 +8,20 @@ import {
   updateSection,
   updateDiningTable,
 } from "./api";
+import type { TableListParams } from "./api";
 import { errorFunction, successFunction } from "@/components/common/Alert";
 
 export const diningTableDashboardQueryKey = ["dining-table", "dashboard"] as const;
 
 export const sectionQueryKeys = {
   all: ["sections"] as const,
-  list: () => [...sectionQueryKeys.all, "list"] as const,
+  list: (params?: TableListParams) => [...sectionQueryKeys.all, "list", params] as const,
   detail: (id: number) => [...sectionQueryKeys.all, "detail", id] as const,
 };
 
 const diningTableQueryKeys = {
   all: ["dining-table"] as const,
-  list: (params?: { section__name?: string; search?: string; is_occupied?: boolean }) =>
+  list: (params?: { section__name?: string; search?: string; is_occupied?: boolean } & TableListParams) =>
     [...diningTableQueryKeys.all, "list", params] as const,
   detail: (id: number) => [...diningTableQueryKeys.all, "detail", id] as const,
 };
@@ -40,10 +41,10 @@ export const useCreateSection = () => {
     },
   });
 };
-export const useSections = (enabled: boolean = true) => {
+export const useSections = (enabled: boolean = true, params?: TableListParams) => {
   return useQuery({
-    queryKey: sectionQueryKeys.list(),
-    queryFn: () => getSections(),
+    queryKey: sectionQueryKeys.list(params),
+    queryFn: () => getSections(params),
     enabled,
    });
 };
@@ -97,7 +98,7 @@ export const useUpdateDiningTable = () => {
 
 export const useDiningTables = (
   enabled: boolean = true,
-  params?: { section__name?: string; search?: string; is_occupied?: boolean }
+  params?: { section__name?: string; search?: string; is_occupied?: boolean } & TableListParams
 ) => {
   return useQuery({
     queryKey: diningTableQueryKeys.list(params),

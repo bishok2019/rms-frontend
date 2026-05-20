@@ -25,6 +25,7 @@ import { Trash2, Edit2, Loader2, Eye, EyeOff, Search } from "lucide-react";
 import { fetchUsers, updateUser, createUser, type User, type UpdateUserData, type CreateUserData, type UserFilters } from "../Authentication/Store/api";
 
 const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
 
 export default function UsersPage() {
   const uniqueValues = (users: User[], key: "userType") =>
@@ -40,6 +41,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<UserFilters>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -57,11 +59,11 @@ export default function UsersPage() {
     const loadUsers = async () => {
       try {
         setLoading(true);
-        const response = await fetchUsers({ ...filters, page: currentPage, limit: PAGE_SIZE });
+        const response = await fetchUsers({ ...filters, page: currentPage, limit: pageSize });
         if (response.success && response.data) {
           setUsers(response.data);
           setTotalUsers(response.totalCount ?? response.data.length);
-          setTotalPages(response.totalPages ?? Math.max(1, Math.ceil(response.data.length / PAGE_SIZE)));
+          setTotalPages(response.totalPages ?? Math.max(1, Math.ceil(response.data.length / pageSize)));
           setCurrentPage(response.currentPage ?? currentPage);
         } else {
           setError(response.message || "Failed to load users");
@@ -74,7 +76,7 @@ export default function UsersPage() {
       }
     };
     loadUsers();
-  }, [currentPage, filters]);
+  }, [currentPage, filters, pageSize]);
 
 
 
@@ -124,9 +126,9 @@ export default function UsersPage() {
 
         const response = await createUser(createData);
         if (response.success && response.data) {
-          setUsers((current) => [response.data!, ...current].slice(0, PAGE_SIZE));
+          setUsers((current) => [response.data!, ...current].slice(0, pageSize));
           setTotalUsers((current) => current + 1);
-          setTotalPages((current) => Math.max(current, Math.ceil((totalUsers + 1) / PAGE_SIZE)));
+          setTotalPages((current) => Math.max(current, Math.ceil((totalUsers + 1) / pageSize)));
           setFormData({ first_name: "", email: "", mobile_no: "", user_type: "waiter", is_active: true, password: "" });
           setIsFormOpen(false);
         } else {
@@ -327,7 +329,13 @@ export default function UsersPage() {
                 currentPage={currentPage}
                 isLoading={loading}
                 onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                onPageSizeChange={(nextPageSize) => {
+                  setCurrentPage(1);
+                  setPageSize(nextPageSize);
+                }}
                 onPreviousPage={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                pageSize={pageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
                 totalCount={totalUsers}
                 totalPages={totalPages}
               />

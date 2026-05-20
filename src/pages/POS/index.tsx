@@ -105,6 +105,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 type MenuItemsResponse = PaginatedApiResponse<MenuItem> | { results?: MenuItem[]; next?: string | null; currentPage?: number };
+const MENU_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
 
 // Custom Hook: useMenuItemsSearch
 function useMenuItemsSearch(searchTerm: string, category: string, page: number, pageSize: number = 24) {
@@ -306,7 +307,7 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 24;
+  const [pageSize, setPageSize] = useState(24);
 
   // Fetch categories for filtering
   const { data: categoriesData } = useQuery({
@@ -469,7 +470,13 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
               currentPage={apiCurrentPage}
               isLoading={isFetching}
               onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+              onPageSizeChange={(nextPageSize) => {
+                setCurrentPage(1);
+                setPageSize(nextPageSize);
+              }}
               onPreviousPage={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+              pageSize={pageSize}
+              pageSizeOptions={MENU_PAGE_SIZE_OPTIONS}
               totalCount={totalCount}
               totalPages={totalPages}
             />

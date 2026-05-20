@@ -66,6 +66,7 @@ interface EmployeeFormState {
 type ViewMode = "grid" | "list";
 
 const PAGE_SIZE = 12;
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
 
 const defaultFormState: EmployeeFormState = {
   userId: "",
@@ -181,6 +182,7 @@ export default function EmployeesPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(null);
   const [formState, setFormState] = useState<EmployeeFormState>(defaultFormState);
@@ -220,11 +222,11 @@ export default function EmployeesPage() {
     [departmentFilter, employees, positionFilter]
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
   const paginatedEmployees = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filteredEmployees.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [currentPage, filteredEmployees]);
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredEmployees.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, filteredEmployees, pageSize]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -488,7 +490,13 @@ export default function EmployeesPage() {
                 currentPage={currentPage}
                 isLoading={isFetching}
                 onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                onPageSizeChange={(nextPageSize) => {
+                  setCurrentPage(1);
+                  setPageSize(nextPageSize);
+                }}
                 onPreviousPage={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                pageSize={pageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
                 totalCount={filteredEmployees.length}
                 totalPages={totalPages}
               />

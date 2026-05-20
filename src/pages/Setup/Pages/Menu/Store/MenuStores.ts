@@ -2,18 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { successFunction } from "@/components/common/Alert";
 import { createCategory, getCategories, updateCategory, createMenuItem, getMenuItems, updateMenuItem, getMenuDashboard } from "./api";
+import type { MenuListParams } from "./api";
 
 export const menuDashboardQueryKey = ["menu", "dashboard"] as const;
 
 export const categoryQueryKeys = {
   all: ["category"] as const,
-  list: () => [...categoryQueryKeys.all, "list"] as const,
+  list: (params?: MenuListParams) => [...categoryQueryKeys.all, "list", params] as const,
   detail: (id: number) => [...categoryQueryKeys.all, "detail", id] as const,
 };
 
 export const itemQueryKeys = {
   all: ["item"] as const,
-  list: () => [...itemQueryKeys.all, "list"] as const,
+  list: (params?: MenuListParams) => [...itemQueryKeys.all, "list", params] as const,
   detail: (id: number) => [...itemQueryKeys.all, "detail", id] as const,
 };
 export const useCreateCategory = () => {
@@ -44,10 +45,10 @@ export const useUpdateCategory = () => {
   });
 };
 
-export const useCategories = (enabled: boolean = true) => {
+export const useCategories = (enabled: boolean = true, params?: MenuListParams) => {
   return useQuery({
-    queryKey: categoryQueryKeys.list(),
-    queryFn: () => getCategories(),
+    queryKey: categoryQueryKeys.list(params),
+    queryFn: () => getCategories(params),
     enabled,
   });
 };
@@ -66,10 +67,10 @@ export const useCreateMenuItem = () => {
   });
 };
 
-export const useMenuItems = (enabled: boolean = true) => {
+export const useMenuItems = (enabled: boolean = true, params?: MenuListParams) => {
   return useQuery({
-    queryKey: itemQueryKeys.list(),
-    queryFn: () => getMenuItems(),
+    queryKey: itemQueryKeys.list(params),
+    queryFn: () => getMenuItems(params),
     enabled,
   });
 };

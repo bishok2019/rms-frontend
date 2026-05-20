@@ -61,8 +61,8 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="p-6 h-full">
-      <div className="sticky top-0 z-10 pb-4 mb-6 flex justify-between items-center">
+    <div className="flex h-screen min-h-0 flex-col overflow-hidden p-6">
+      <div className="z-10 mb-6 flex shrink-0 justify-between pb-4">
         <div>
           <h1 className="text-2xl font-bold">Orders Management</h1>
           <p className="text-muted-foreground">
@@ -79,14 +79,14 @@ export default function OrdersPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)] overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-hidden lg:grid-cols-2">
         {/* Left side - Order List */}
-        <div className="overflow-y-auto" style={{minHeight:"max-content"}}>
+        <div className="min-h-0 overflow-hidden">
           <OrderList onOrderSelect={handleOrderSelect} onEditOrder={handleEditOrder} refreshTrigger={refreshTrigger} />
         </div>
 
         {/* Right side - Order Details */}
-        <div className="h-full overflow-y-hidden">
+        <div className="min-h-0 overflow-hidden">
           <OrderDetails order={selectedOrder} onEditItem={handleEditItem} />
         </div>
       </div>

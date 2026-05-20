@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { Check, Cross, Edit, Grid3X3, List, Minus, Plus, Search, Table2, Trash2, Users, X } from "lucide-react";
+import { Check, Edit, Grid3X3, List, Plus, Search, Table2, Trash2, Users, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { errorFunction } from "@/components/common/Alert";
+import { ListPagination } from "@/components/common/ListPagination";
 import { cn } from "@/lib/utils";
 import type { DiningTable, Section } from "@/types/api";
 import { TableDetailModal } from "../components/table-detail-modal";
@@ -29,6 +30,10 @@ type ActiveTab = "overview" | "areas" | "tables";
 type StatusFilter = "all" | "available" | "occupied";
 type MultiOrderFilter = "all" | "yes" | "no";
 type ViewMode = "grid" | "list";
+const TABLE_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+const EMPTY_SECTIONS: Section[] = [];
+const EMPTY_TABLES: DiningTable[] = [];
 
 interface TableRecord {
   id: string;
@@ -121,8 +126,15 @@ const toSection = (areaRecord: AreaRecord): Section => ({
 });
 
 const resolveTableArea = (table: DiningTable, sections: Section[]) => {
-  if (table.section == null) return "Unassigned";
-  const raw = String(table.section);
+  const sectionValue = table.section as unknown;
+  if (sectionValue == null) return "Unassigned";
+  if (typeof sectionValue === "object") {
+    const relation = sectionValue as { id?: number | string | null; name?: string | null };
+    if (relation.name) return relation.name;
+    if (relation.id != null) return String(relation.id);
+    return "Unassigned";
+  }
+  const raw = String(sectionValue);
   return sections.find((section) => String(section.id) === raw || section.name === raw)?.name ?? raw;
 };
 
@@ -151,21 +163,35 @@ export default function TablesPage() {
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [sectionsEnabled, setSectionsEnabled] = useState(false);
   const [tablesEnabled, setTablesEnabled] = useState(false);
+  const [areaPage, setAreaPage] = useState(1);
+  const [tablePage, setTablePage] = useState(1);
+  const [areaPageSize, setAreaPageSize] = useState(TABLE_PAGE_SIZE);
+  const [tablePageSize, setTablePageSize] = useState(TABLE_PAGE_SIZE);
 
   const { data: dashboardData } = useDiningTableDashboard();
-  const { data: sectionsResponse } = useSections(sectionsEnabled);
-  const { data: diningTablesResponse } = useDiningTables(tablesEnabled);
+  const { data: sectionsResponse, isFetching: isFetchingSections } = useSections(sectionsEnabled, {
+    page: areaPage,
+    page_size: areaPageSize,
+  });
+  const { data: diningTablesResponse, isFetching: isFetchingTables } = useDiningTables(tablesEnabled, {
+    page: tablePage,
+    page_size: tablePageSize,
+  });
   const { mutateAsync: createDiningTable } = useCreateDiningTable();
   const { mutateAsync: updateDiningTable } = useUpdateDiningTable();
 
-  const apiSections = sectionsResponse?.data ?? [];
-  const apiTables = diningTablesResponse?.data ?? [];
+  const apiSections = sectionsResponse?.data ?? EMPTY_SECTIONS;
+  const apiTables = diningTablesResponse?.data ?? EMPTY_TABLES;
+
+  const tableRecords = useMemo(() => {
+    return apiTables.map((table) => mapDiningTableToRecord(table, apiSections));
+  }, [apiSections, apiTables]);
 
   const areas = useMemo(() => {
-    if (apiSections.length === 0) return sampleAreas;
+    if (apiSections.length === 0 && tableRecords.length === 0) return sampleAreas;
 
-    const tableRecords = apiTables.map((table) => mapDiningTableToRecord(table, apiSections));
-    return apiSections.map((section) => {
+    const sectionAreaNames = new Set(apiSections.map((section) => section.name));
+    const sectionAreas = apiSections.map((section) => {
       const tables = tableRecords.filter((table) => table.area === section.name);
       return {
         id: section.id,
@@ -176,13 +202,34 @@ export default function TablesPage() {
         source: section,
       };
     });
-  }, [apiSections, apiTables]);
+
+    const ungroupedTables = tableRecords.filter((table) => !sectionAreaNames.has(table.area));
+    const ungroupedAreas = Array.from(
+      ungroupedTables.reduce((groups, table) => {
+        const tables = groups.get(table.area) ?? [];
+        tables.push(table);
+        groups.set(table.area, tables);
+        return groups;
+      }, new Map<string, TableRecord[]>())
+    ).map(([name, tables], index) => ({
+      id: -index - 1,
+      name,
+      description: name === "Unassigned" ? "Tables without an assigned area." : "Restaurant service area.",
+      icon: areaIcons[name] ?? "🍽️",
+      tables,
+    }));
+
+    return [...sectionAreas, ...ungroupedAreas];
+  }, [apiSections, tableRecords]);
 
   const sectionsForForms = useMemo(() => {
     return apiSections.length > 0 ? apiSections : sampleAreas.map(toSection);
   }, [apiSections]);
 
-  const allTables = useMemo(() => areas.flatMap((areaRecord) => areaRecord.tables), [areas]);
+  const allTables = useMemo(() => {
+    if (apiSections.length > 0 || tablesEnabled) return tableRecords;
+    return areas.flatMap((areaRecord) => areaRecord.tables);
+  }, [apiSections.length, areas, tableRecords, tablesEnabled]);
   const filteredAreas = useMemo(() => {
     const term = search.trim().toLowerCase();
     return areas.filter((areaRecord) => {
@@ -228,6 +275,8 @@ export default function TablesPage() {
     };
   }, [areas.length, dashboardData, filteredTables]);
 
+  const activePaginationData = activeTab === "areas" ? sectionsResponse : activeTab === "tables" ? diningTablesResponse : null;
+
   const enableActiveTabData = () => {
     if (activeTab === "areas") {
       setSectionsEnabled(true);
@@ -235,6 +284,7 @@ export default function TablesPage() {
     }
 
     if (activeTab === "tables") {
+      setSectionsEnabled(true);
       setTablesEnabled(true);
     }
   };
@@ -357,33 +407,43 @@ export default function TablesPage() {
           </div>
 
           <div className="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-center md:justify-between">
-            <div className="inline-flex w-fit rounded-md border border-border bg-muted p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setSectionsEnabled(true);
-                  setActiveTab("areas");
-                }}
-                className={cn(
-                  "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
-                  activeTab === "areas" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Areas
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setTablesEnabled(true);
-                  setActiveTab("tables");
-                }}
-                className={cn(
-                  "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
-                  activeTab === "tables" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Tables
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex w-fit rounded-md border border-border bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSectionsEnabled(true);
+                    setActiveTab("areas");
+                  }}
+                  className={cn(
+                    "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
+                    activeTab === "areas" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Areas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSectionsEnabled(true);
+                    setTablesEnabled(true);
+                    setActiveTab("tables");
+                  }}
+                  className={cn(
+                    "rounded-sm px-4 py-2 text-sm font-medium transition-colors",
+                    activeTab === "tables" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Tables
+                </button>
+              </div>
+
+              {activePaginationData ? (
+                <PaginationMeta
+                  currentCount={activePaginationData.currentCount}
+                  totalCount={activePaginationData.totalCount}
+                />
+              ) : null}
             </div>
 
             {activeTab !== "overview" ? (
@@ -550,6 +610,42 @@ export default function TablesPage() {
               onDelete={() => errorFunction("Delete table is not implemented yet.")}
             />
             )}
+            {activeTab === "areas" && sectionsResponse ? (
+              <ListPagination
+                currentCount={sectionsResponse.currentCount}
+                currentPage={sectionsResponse.currentPage}
+                isLoading={isFetchingSections}
+                onNextPage={() => setAreaPage((page) => page + 1)}
+                onPageSizeChange={(pageSize) => {
+                  setAreaPage(1);
+                  setAreaPageSize(pageSize);
+                }}
+                onPreviousPage={() => setAreaPage((page) => Math.max(1, page - 1))}
+                pageSize={areaPageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                showSummary={false}
+                totalCount={sectionsResponse.totalCount}
+                totalPages={sectionsResponse.totalPages}
+              />
+            ) : null}
+            {activeTab === "tables" && diningTablesResponse ? (
+              <ListPagination
+                currentCount={diningTablesResponse.currentCount}
+                currentPage={diningTablesResponse.currentPage}
+                isLoading={isFetchingTables}
+                onNextPage={() => setTablePage((page) => page + 1)}
+                onPageSizeChange={(pageSize) => {
+                  setTablePage(1);
+                  setTablePageSize(pageSize);
+                }}
+                onPreviousPage={() => setTablePage((page) => Math.max(1, page - 1))}
+                pageSize={tablePageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                showSummary={false}
+                totalCount={diningTablesResponse.totalCount}
+                totalPages={diningTablesResponse.totalPages}
+              />
+            ) : null}
           </div>
         )}
       </div>
@@ -595,6 +691,21 @@ function StatCard({
           <Icon className="h-5 w-5 text-muted-foreground" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function PaginationMeta({
+  currentCount,
+  totalCount,
+}: {
+  currentCount: number;
+  totalCount: number;
+}) {
+  return (
+    <div className="text-base font-medium text-muted-foreground">
+      Showing <span className="text-foreground">{currentCount}</span> of{" "}
+      <span className="text-foreground">{totalCount}</span>
     </div>
   );
 }

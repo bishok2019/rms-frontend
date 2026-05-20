@@ -14,6 +14,11 @@ export interface DiningTableDashboard {
   totalSeats: number;
 }
 
+export interface TableListParams {
+  page?: number;
+  page_size?: number;
+}
+
 /**
  * Creates a new section in the restaurant layout.
  * @param body - The section data to create
@@ -39,9 +44,18 @@ export const updateSection = (id: number, body: unknown) =>
  * Retrieves a paginated list of all sections in the restaurant.
  * @returns Promise resolving to paginated API response containing sections
  */
-export const getSections = async () => {
+const appendPaginationParams = (searchParams: URLSearchParams, params?: TableListParams) => {
+  if (params?.page) searchParams.append("page", params.page.toString());
+  if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
+};
+
+export const getSections = async (params?: TableListParams) => {
+  const searchParams = new URLSearchParams();
+  appendPaginationParams(searchParams, params);
+  const queryString = searchParams.toString();
+
   const response = await privateApiInstance
-    .get("core-app/section/list")
+    .get(`core-app/section/list${queryString ? `?${queryString}` : ""}`)
     .json<PaginatedApiResponse<Section>>();
 
   return response;
@@ -76,11 +90,12 @@ export const getDiningTables = async (params?: {
   section__name?: string;
   search?: string;
   is_occupied?: boolean;
-}) => {
+} & TableListParams) => {
   const searchParams = new URLSearchParams();
   if (params?.section__name) searchParams.append("section__name", params.section__name);
   if (params?.search) searchParams.append("search", params.search);
   if (params?.is_occupied !== undefined) searchParams.append("is_occupied", params.is_occupied.toString());
+  appendPaginationParams(searchParams, params);
 
   const queryString = searchParams.toString();
   const url = `core-app/dining_table/list${queryString ? `?${queryString}` : ""}`;

@@ -41,6 +41,8 @@ interface ApiLog {
   username: string | null;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+
 export default function ApiLogsPage() {
   const [logs, setLogs] = useState<ApiLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,7 @@ export default function ApiLogsPage() {
     created_at: "",
   });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [pagination, setPagination] = useState({
     currentCount: 0,
     totalCount: 0,
@@ -77,6 +80,7 @@ export default function ApiLogsPage() {
     try {
       const params = new URLSearchParams({
         page: pageNum.toString(),
+        limit: pageSize.toString(),
         search: debouncedSearch,
         ...Object.fromEntries(
           Object.entries(filters).filter(([, value]) => value !== "")
@@ -99,7 +103,7 @@ export default function ApiLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filters]);
+  }, [debouncedSearch, filters, pageSize]);
 
   useEffect(() => {
     fetchLogs(1);
@@ -118,8 +122,8 @@ export default function ApiLogsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 h-full overflow-hidden flex flex-col">
-      <div className="sticky top-0 z-10 pb-4">
+    <div className="flex h-screen min-h-0 flex-col overflow-hidden p-6">
+      <div className="shrink-0 pb-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">API Logs</h1>
           <Button onClick={() => fetchLogs(1)} disabled={loading}>
@@ -128,8 +132,8 @@ export default function ApiLogsPage() {
         </div>
       </div>
 
-      <Card className="border-none">
-        <CardHeader>
+      <Card className="min-h-0 flex-1 border-none">
+        <CardHeader className="shrink-0">
           {/* <CardTitle>Logs</CardTitle> */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <Input
@@ -166,8 +170,8 @@ export default function ApiLogsPage() {
             />
           </div>
         </CardHeader>
-        <CardContent>
-          <Table containerClassName="max-h-[600px] overflow-auto">
+        <CardContent className="flex min-h-0 max-h-none flex-1 flex-col overflow-hidden">
+          <Table containerClassName="min-h-0 flex-1 overflow-auto">
             <TableHeader className="sticky top-0 z-30 bg-background shadow-sm">
               <TableRow>
               {/* <TableRow className="bg-background hover:bg-background"> */}
@@ -220,7 +224,13 @@ export default function ApiLogsPage() {
             currentPage={page}
             isLoading={loading}
             onNextPage={() => fetchLogs(Math.min(page + 1, pagination.totalPages))}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }}
             onPreviousPage={() => fetchLogs(Math.max(page - 1, 1))}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
             totalCount={pagination.totalCount}
             totalPages={pagination.totalPages}
           />
