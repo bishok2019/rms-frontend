@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit2, Grid2X2, List, Search, Trash2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { BriefcaseBusiness, Building2, DollarSign, Edit2, Grid2X2, List, Search, Trash2, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,15 @@ type ViewMode = "grid" | "list";
 
 const PAGE_SIZE = 12;
 const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+
+type EmployeeStat = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  cardClass: string;
+  iconClass: string;
+  valueClass: string;
+};
 
 const defaultFormState: EmployeeFormState = {
   userId: "",
@@ -223,27 +233,48 @@ export default function EmployeesPage() {
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedEmployees = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
+    const startIndex = (safeCurrentPage - 1) * pageSize;
     return filteredEmployees.slice(startIndex, startIndex + pageSize);
-  }, [currentPage, filteredEmployees, pageSize]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [departmentFilter, positionFilter, searchQuery]);
-
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages));
-  }, [totalPages]);
+  }, [filteredEmployees, pageSize, safeCurrentPage]);
 
   const stats = useMemo(() => {
     const totalSalary = employees.reduce((sum, employee) => sum + Number(employee.salary || 0), 0);
     return [
-      { label: "Total Employees", value: employees.length.toString() },
-      { label: "Average Salary", value: formatSalary(String(totalSalary / Math.max(employees.length, 1))) },
-      { label: "Departments", value: departments.length.toString() },
-      { label: "Positions", value: positions.length.toString() },
-    ];
+      {
+        label: "Total Employees",
+        value: employees.length.toString(),
+        icon: UsersRound,
+        cardClass: "border-l-sky-500 bg-sky-50/70 dark:bg-sky-950/20",
+        iconClass: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+        valueClass: "text-sky-950 dark:text-sky-100",
+      },
+      {
+        label: "Average Salary",
+        value: formatSalary(String(totalSalary / Math.max(employees.length, 1))),
+        icon: DollarSign,
+        cardClass: "border-l-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/20",
+        iconClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+        valueClass: "text-emerald-950 dark:text-emerald-100",
+      },
+      {
+        label: "Departments",
+        value: departments.length.toString(),
+        icon: Building2,
+        cardClass: "border-l-violet-500 bg-violet-50/70 dark:bg-violet-950/20",
+        iconClass: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+        valueClass: "text-violet-950 dark:text-violet-100",
+      },
+      {
+        label: "Positions",
+        value: positions.length.toString(),
+        icon: BriefcaseBusiness,
+        cardClass: "border-l-amber-500 bg-amber-50/70 dark:bg-amber-950/20",
+        iconClass: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+        valueClass: "text-amber-950 dark:text-amber-100",
+      },
+    ] satisfies EmployeeStat[];
   }, [departments.length, employees, positions.length]);
 
   const openCreateForm = () => {
@@ -327,14 +358,22 @@ export default function EmployeesPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Card key={stat.label} className="gap-2 rounded-md py-4 shadow-none">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+            <Card key={stat.label} className={cn("gap-2 overflow-hidden rounded-md border-l-4 py-4 shadow-none", stat.cardClass)}>
               <CardContent className="max-h-none px-4">
-                <p className="text-xs font-medium uppercase text-muted-foreground">{stat.label}</p>
-                <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-xs font-medium uppercase text-muted-foreground">{stat.label}</p>
+                  <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md", stat.iconClass)}>
+                    <Icon className="h-4 w-4" />
+                  </span>
+                </div>
+                <p className={cn("mt-2 text-2xl font-semibold", stat.valueClass)}>{stat.value}</p>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         <Card className="min-h-0 flex-1 gap-0 rounded-md shadow-none">
@@ -344,14 +383,23 @@ export default function EmployeesPage() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search employees by name"
                   className="pl-9 shadow-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:w-auto">
-                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                <Select
+                  value={positionFilter}
+                  onValueChange={(value) => {
+                    setPositionFilter(value);
+                    setCurrentPage(1);
+                  }}
+                >
                   <SelectTrigger className="w-full min-w-40 shadow-none">
                     <SelectValue placeholder="All Positions" />
                   </SelectTrigger>
@@ -365,7 +413,13 @@ export default function EmployeesPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <Select
+                  value={departmentFilter}
+                  onValueChange={(value) => {
+                    setDepartmentFilter(value);
+                    setCurrentPage(1);
+                  }}
+                >
                   <SelectTrigger className="w-full min-w-40 shadow-none">
                     <SelectValue placeholder="All Departments" />
                   </SelectTrigger>
@@ -487,7 +541,7 @@ export default function EmployeesPage() {
             {!isLoading && filteredEmployees.length > 0 && (
               <ListPagination
                 currentCount={paginatedEmployees.length}
-                currentPage={currentPage}
+                currentPage={safeCurrentPage}
                 isLoading={isFetching}
                 onNextPage={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
                 onPageSizeChange={(nextPageSize) => {

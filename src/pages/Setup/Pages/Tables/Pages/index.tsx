@@ -399,11 +399,11 @@ export default function TablesPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-            <StatCard label="Total Tables" value={stats.totalTables} icon={Table2} />
+            <StatCard label="Total Tables" value={stats.totalTables} icon={Table2} tone="total" />
             <StatCard label="Available" value={stats.available} icon={Users} tone="available" />
             <StatCard label="Occupied" value={stats.occupied} icon={Users} tone="occupied" />
-            <StatCard label="Areas" value={stats.totalAreas} icon={Grid3X3} />
-            <StatCard label="Total Seats" value={stats.seats} icon={Users} />
+            <StatCard label="Areas" value={stats.totalAreas} icon={Grid3X3} tone="areas" />
+            <StatCard label="Total Seats" value={stats.seats} icon={Users} tone="seats" />
           </div>
 
           <div className="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-center md:justify-between">
@@ -670,25 +670,47 @@ function StatCard({
   label: string;
   value: number;
   icon: typeof Grid3X3;
-  tone?: "available" | "occupied";
+  tone: "total" | "available" | "occupied" | "areas" | "seats";
 }) {
+  const toneClasses = {
+    total: {
+      card: "border-l-sky-500 bg-sky-50/70 dark:bg-sky-950/20",
+      icon: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+      value: "text-sky-950 dark:text-sky-100",
+    },
+    available: {
+      card: "border-l-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/20",
+      icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+      value: "text-emerald-950 dark:text-emerald-100",
+    },
+    occupied: {
+      card: "border-l-rose-500 bg-rose-50/70 dark:bg-rose-950/20",
+      icon: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+      value: "text-rose-950 dark:text-rose-100",
+    },
+    areas: {
+      card: "border-l-violet-500 bg-violet-50/70 dark:bg-violet-950/20",
+      icon: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+      value: "text-violet-950 dark:text-violet-100",
+    },
+    seats: {
+      card: "border-l-amber-500 bg-amber-50/70 dark:bg-amber-950/20",
+      icon: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+      value: "text-amber-950 dark:text-amber-100",
+    },
+  }[tone];
+
   return (
-    <div className="rounded-md border border-border bg-card p-4">
+    <div className={cn("overflow-hidden rounded-md border border-l-4 border-border p-4", toneClasses.card)}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
-          <p
-            className={cn(
-              "mt-1 text-2xl font-semibold",
-              tone === "available" && "text-green-600",
-              tone === "occupied" && "text-red-600"
-            )}
-          >
+          <p className={cn("mt-1 text-2xl font-semibold", toneClasses.value)}>
             {value}
           </p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
-          <Icon className="h-5 w-5 text-muted-foreground" />
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-md", toneClasses.icon)}>
+          <Icon className="h-5 w-5" />
         </div>
       </div>
     </div>

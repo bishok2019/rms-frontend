@@ -6,6 +6,16 @@ export interface KitchenListParams {
   page_size?: number;
 }
 
+export interface KitchenDashboard {
+  totalKitchens: number;
+  totalKitchenCategories: number;
+  totalActiveKitchens: number;
+  totalInactiveKitchens: number;
+  totalActiveKitchenCategories: number;
+  totalInactiveKitchenCategories: number;
+  totalKitchenCapacity: number;
+}
+
 export const createKitchenCategory = (body: unknown) =>
   privateApiInstance
     .post("core-app/kitchen/category/create", { json: body })
@@ -57,6 +67,12 @@ export const getKitchen = (id: number) =>
   privateApiInstance
     .get(`core-app/kitchen/retrieve/${id}`)
     .json<ApiResponse<Kitchen>>();
+
+export const getKitchenDashboard = () =>
+  privateApiInstance
+    .get("core-app/kitchen/dashboard")
+    .json<ApiResponse<KitchenDashboard> | KitchenDashboard>()
+    .then((response) => ("data" in response ? response.data : response));
 
 export const updateKitchen = (id: number, body: unknown) =>
   privateApiInstance

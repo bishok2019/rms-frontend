@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,11 +22,122 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListPagination } from "@/components/common/ListPagination";
-import { Trash2, Edit2, Loader2, Eye, EyeOff, Search } from "lucide-react";
-import { fetchUsers, updateUser, createUser, type User, type UpdateUserData, type CreateUserData, type UserFilters } from "../Authentication/Store/api";
+import {
+  BadgeCheck,
+  BriefcaseBusiness,
+  ChefHat,
+  ConciergeBell,
+  Edit2,
+  Eye,
+  EyeOff,
+  Loader2,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Tags,
+  Trash2,
+  UserRoundCheck,
+  UserRoundX,
+  UsersRound,
+} from "lucide-react";
+import {
+  fetchUsers,
+  updateUser,
+  createUser,
+  fetchUserDashboard,
+  type User,
+  type UserDashboard,
+  type UpdateUserData,
+  type CreateUserData,
+  type UserFilters,
+} from "../Authentication/Store/api";
 
 const PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 20, 40, 50];
+
+type SummaryTone = {
+  card: string;
+  icon: string;
+  value: string;
+};
+
+type SummaryCard = {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone: SummaryTone;
+};
+
+const cardTones = {
+  total: {
+    card: "bg-sky-50/70 dark:bg-sky-950/20",
+    icon: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+    value: "text-sky-950 dark:text-sky-100",
+  },
+  active: {
+    card: "bg-emerald-50/70 dark:bg-emerald-950/20",
+    icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    value: "text-emerald-950 dark:text-emerald-100",
+  },
+  inactive: {
+    card: "bg-rose-50/70 dark:bg-rose-950/20",
+    icon: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+    value: "text-rose-950 dark:text-rose-100",
+  },
+  types: {
+    card: "bg-violet-50/70 dark:bg-violet-950/20",
+    icon: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+    value: "text-violet-950 dark:text-violet-100",
+  },
+  roles: {
+    card: "bg-amber-50/70 dark:bg-amber-950/20",
+    icon: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    value: "text-amber-950 dark:text-amber-100",
+  },
+  cyan: {
+    card: "bg-cyan-50/70 dark:bg-cyan-950/20",
+    icon: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
+    value: "text-cyan-950 dark:text-cyan-100",
+  },
+  orange: {
+    card: "bg-orange-50/70 dark:bg-orange-950/20",
+    icon: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+    value: "text-orange-950 dark:text-orange-100",
+  },
+  lime: {
+    card: "bg-lime-50/70 dark:bg-lime-950/20",
+    icon: "bg-lime-100 text-lime-700 dark:bg-lime-950 dark:text-lime-300",
+    value: "text-lime-950 dark:text-lime-100",
+  },
+  indigo: {
+    card: "bg-indigo-50/70 dark:bg-indigo-950/20",
+    icon: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
+    value: "text-indigo-950 dark:text-indigo-100",
+  },
+  slate: {
+    card: "bg-slate-50/70 dark:bg-slate-900/30",
+    icon: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    value: "text-slate-950 dark:text-slate-100",
+  },
+} satisfies Record<string, SummaryTone>;
+
+const userTypeTones = [cardTones.cyan, cardTones.orange, cardTones.lime, cardTones.indigo, cardTones.slate];
+
+const userTypeIcons: Record<string, LucideIcon> = {
+  waiter: ConciergeBell,
+  cleaner: Sparkles,
+  manager: BriefcaseBusiness,
+  cook: ChefHat,
+  system: Settings,
+};
+
+const formatUserTypeLabel = (type: string) =>
+  type
+    .split(/[_-\s]+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
 
 export default function UsersPage() {
   const uniqueValues = (users: User[], key: "userType") =>
@@ -44,6 +156,7 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [dashboardData, setDashboardData] = useState<UserDashboard | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -54,6 +167,15 @@ export default function UsersPage() {
     is_active: true,
     password: "",
   });
+
+  const loadUserDashboard = async () => {
+    try {
+      const response = await fetchUserDashboard();
+      setDashboardData(response ?? null);
+    } catch (err) {
+      console.error("Error loading user dashboard:", err);
+    }
+  };
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -78,16 +200,34 @@ export default function UsersPage() {
     loadUsers();
   }, [currentPage, filters, pageSize]);
 
+  useEffect(() => {
+    loadUserDashboard();
+  }, []);
 
-
-  const userTypes = uniqueValues(users, "userType");
-  const activeUsers = users.filter(u => u.isActive).length;
-  const inactiveUsers = users.length - activeUsers;
-  const stats = [
-    { label: "Total Users", value: users.length.toString() },
-    { label: "Active Users", value: activeUsers.toString() },
-    { label: "Inactive Users", value: inactiveUsers.toString() },
-    { label: "User Types", value: userTypes.length.toString() },
+  const pageUserTypeCounts = users.reduce<Record<string, number>>((counts, user) => {
+    if (user.userType) {
+      counts[user.userType] = (counts[user.userType] ?? 0) + 1;
+    }
+    return counts;
+  }, {});
+  const dashboardUserTypeCounts = dashboardData?.userTypeCounts ?? pageUserTypeCounts;
+  const userTypes = Array.from(
+    new Set([...uniqueValues(users, "userType"), ...Object.keys(dashboardUserTypeCounts)])
+  ).sort();
+  const activeUsers = dashboardData?.activeUsers ?? users.filter(u => u.isActive).length;
+  const inactiveUsers = dashboardData?.inactiveUsers ?? users.length - activeUsers;
+  const stats: SummaryCard[] = [
+    { label: "Total Users", value: String(dashboardData?.totalUsers ?? totalUsers), icon: UsersRound, tone: cardTones.total },
+    { label: "Active Users", value: String(activeUsers), icon: UserRoundCheck, tone: cardTones.active },
+    { label: "Inactive Users", value: String(inactiveUsers), icon: UserRoundX, tone: cardTones.inactive },
+    { label: "User Types", value: String(dashboardData?.totalUserTypes ?? userTypes.length), icon: Tags, tone: cardTones.types },
+    { label: "Total Roles", value: String(dashboardData?.totalRoles ?? 0), icon: ShieldCheck, tone: cardTones.roles },
+    ...Object.entries(dashboardUserTypeCounts).map(([type, count], index) => ({
+      label: `${formatUserTypeLabel(type)} Users`,
+      value: String(count),
+      icon: userTypeIcons[type] ?? BadgeCheck,
+      tone: userTypeTones[index % userTypeTones.length],
+    })),
   ];
 
   const handleSearch = (query: string) => {
@@ -129,6 +269,7 @@ export default function UsersPage() {
           setUsers((current) => [response.data!, ...current].slice(0, pageSize));
           setTotalUsers((current) => current + 1);
           setTotalPages((current) => Math.max(current, Math.ceil((totalUsers + 1) / pageSize)));
+          loadUserDashboard();
           setFormData({ first_name: "", email: "", mobile_no: "", user_type: "waiter", is_active: true, password: "" });
           setIsFormOpen(false);
         } else {
@@ -148,6 +289,7 @@ export default function UsersPage() {
         const response = await updateUser(editingId, updateData);
         if (response.success && response.data) {
           setUsers(users.map((u) => (u.id === editingId ? response.data! : u)));
+          loadUserDashboard();
           setEditingId(null);
           setFormData({ first_name: "", email: "", mobile_no: "", user_type: "waiter", is_active: true, password: "" });
           setIsFormOpen(false);
@@ -193,6 +335,7 @@ export default function UsersPage() {
   const handleDelete = (id: number) => {
     setUsers(users.filter((u) => u.id !== id));
     setTotalUsers((current) => Math.max(current - 1, 0));
+    loadUserDashboard();
   };
 
   return (
@@ -208,12 +351,17 @@ export default function UsersPage() {
           <Button onClick={handleCreate}>Add User</Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {stats.map((stat) => (
-            <Card key={stat.label} className="gap-2 rounded-md py-4 shadow-none">
+            <Card key={stat.label} className={`gap-2 overflow-hidden rounded-md py-4 shadow-none ${stat.tone.card}`}>
               <CardContent className="max-h-none px-4">
-                <p className="text-xs font-medium uppercase text-muted-foreground">{stat.label}</p>
-                <p className="mt-2 text-2xl font-semibold">{stat.value}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-xs font-medium uppercase text-muted-foreground">{stat.label}</p>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${stat.tone.icon}`}>
+                    <stat.icon className="h-4 w-4" />
+                  </span>
+                </div>
+                <p className={`mt-2 text-2xl font-semibold ${stat.tone.value}`}>{stat.value}</p>
               </CardContent>
             </Card>
           ))}

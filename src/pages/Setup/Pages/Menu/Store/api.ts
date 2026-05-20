@@ -13,6 +13,36 @@ export interface MenuListParams {
   page_size?: number;
 }
 
+type ListApiResponse<T> = Partial<PaginatedApiResponse<T>> & {
+  count?: number;
+  results?: T[];
+};
+
+const normalizePaginatedResponse = <T,>(
+  response: ListApiResponse<T>,
+  params?: MenuListParams
+): PaginatedApiResponse<T> => {
+  const data = Array.isArray(response.data)
+    ? response.data
+    : Array.isArray(response.results)
+      ? response.results
+      : [];
+  const pageSize = params?.page_size ?? (data.length || 1);
+  const totalCount = response.totalCount ?? response.count ?? data.length;
+
+  return {
+    success: response.success ?? true,
+    message: response.message ?? "",
+    data,
+    totalCount,
+    currentCount: response.currentCount ?? data.length,
+    totalPages: response.totalPages ?? Math.max(1, Math.ceil(totalCount / pageSize)),
+    currentPage: response.currentPage ?? params?.page ?? 1,
+    next: response.next ?? null,
+    previous: response.previous ?? null,
+  };
+};
+
 export const createCategory = (body: unknown) => {
   const options =
     body instanceof FormData
@@ -29,7 +59,10 @@ export const createCategory = (body: unknown) => {
 const buildMenuListQuery = (params?: MenuListParams) => {
   const searchParams = new URLSearchParams();
   if (params?.page) searchParams.append("page", params.page.toString());
-  if (params?.page_size) searchParams.append("page_size", params.page_size.toString());
+  if (params?.page_size) {
+    searchParams.append("page_size", params.page_size.toString());
+    searchParams.append("limit", params.page_size.toString());
+  }
   const queryString = searchParams.toString();
   return queryString ? `?${queryString}` : "";
 };
@@ -37,8 +70,8 @@ const buildMenuListQuery = (params?: MenuListParams) => {
 export const getCategories = async (params?: MenuListParams) => {
   const response = await privateApiInstance
     .get(`core-app/menu/list${buildMenuListQuery(params)}`)
-    .json<PaginatedApiResponse<MenuCategory>>();
-  return response;
+    .json<ListApiResponse<MenuCategory>>();
+  return normalizePaginatedResponse(response, params);
 };
 
 export const updateCategory = (id: number, body: unknown) => {
@@ -70,8 +103,8 @@ export const createMenuItem = (body: unknown) => {
 export const getMenuItems = async (params?: MenuListParams) => {
   const response = await privateApiInstance
     .get(`core-app/menu/items/list${buildMenuListQuery(params)}`)
-    .json<PaginatedApiResponse<MenuItem>>();
-  return response;
+    .json<ListApiResponse<MenuItem>>();
+  return normalizePaginatedResponse(response, params);
 };
 
 export const getMenuItem = (id: number) =>

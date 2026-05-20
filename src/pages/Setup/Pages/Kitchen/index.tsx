@@ -6,14 +6,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as z from "zod";
 import {
+  CheckCircle2,
+  ChefHat,
   ChevronRight,
+  CircleOff,
   CookingPot,
   Edit2,
   Grid3X3,
   Hand,
+  Layers3,
   Plus,
+  UtensilsCrossed,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { useTheme } from "@/contexts/theme-context";
 
@@ -63,6 +69,7 @@ import type {
 import {
   useCreateKitchen,
   useCreateKitchenCategory,
+  useKitchenDashboard,
   useKitchenCategories,
   useKitchens,
   useUpdateKitchen,
@@ -263,8 +270,6 @@ const toOrderRow = (item: ApiOrderItem): KitchenOrder => ({
   notes: item.note ?? item.special_instructions ?? "N/A",
 });
 
-const getFloor = (location: string) => location.split(" - ")[0];
-
 function CountBadge({ children }: { children: React.ReactNode }) {
   return (
     <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)]">
@@ -342,23 +347,77 @@ function StatCard({
   label,
   value,
   subLabel,
-  success,
+  icon: Icon,
+  tone = "blue",
 }: {
   label: string;
   value: string | number;
   subLabel?: string;
-  success?: boolean;
+  icon: LucideIcon;
+  tone?: "blue" | "green" | "red" | "violet" | "amber" | "cyan" | "slate";
 }) {
+  const toneClasses = {
+    blue: {
+      card: "border-l-[#38BDF8] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#0EA5E9_18%)]",
+      icon: "bg-[#0EA5E9]/15 text-[#7DD3FC]",
+      value: "text-[#BAE6FD]",
+    },
+    green: {
+      card: "border-l-[#22C55E] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#16A34A_18%)]",
+      icon: "bg-[#22C55E]/15 text-[#86EFAC]",
+      value: "text-[#BBF7D0]",
+    },
+    red: {
+      card: "border-l-[#F43F5E] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#E11D48_18%)]",
+      icon: "bg-[#F43F5E]/15 text-[#FDA4AF]",
+      value: "text-[#FFE4E6]",
+    },
+    violet: {
+      card: "border-l-[#8B5CF6] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#7C3AED_18%)]",
+      icon: "bg-[#8B5CF6]/15 text-[#C4B5FD]",
+      value: "text-[#EDE9FE]",
+    },
+    amber: {
+      card: "border-l-[#F59E0B] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#D97706_18%)]",
+      icon: "bg-[#F59E0B]/15 text-[#FCD34D]",
+      value: "text-[#FEF3C7]",
+    },
+    cyan: {
+      card: "border-l-[#06B6D4] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#0891B2_18%)]",
+      icon: "bg-[#06B6D4]/15 text-[#67E8F9]",
+      value: "text-[#CFFAFE]",
+    },
+    slate: {
+      card: "border-l-[#94A3B8] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#64748B_18%)]",
+      icon: "bg-[#94A3B8]/15 text-[#CBD5E1]",
+      value: "text-[#F1F5F9]",
+    },
+  }[tone];
+
   return (
-    <div className="rounded-[var(--border-radius-md)] bg-[var(--color-background-secondary)] px-4 py-[14px]">
-      <p className="text-[11px] font-medium uppercase text-[var(--color-text-secondary)]">{label}</p>
-      <p className={cn("mt-2 text-[22px] font-medium leading-none text-[var(--color-text-primary)]", success && "text-[var(--color-text-success)]")}>
-        {value}
-      </p>
+    <div className={cn("overflow-hidden rounded-[var(--border-radius-md)] border-l-4 px-4 py-[14px]", toneClasses.card)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-medium uppercase text-[var(--color-text-secondary)]">{label}</p>
+          <p className={cn("mt-2 text-[22px] font-medium leading-none", toneClasses.value)}>
+            {value}
+          </p>
+        </div>
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--border-radius-md)]", toneClasses.icon)}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
       {subLabel && <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">{subLabel}</p>}
     </div>
   );
 }
+
+const getCapacityShareTone = (percent: number) => {
+  if (percent >= 30) return "bg-[#F97316]";
+  if (percent >= 20) return "bg-[#F59E0B]";
+  if (percent >= 10) return "bg-[#1D9E75]";
+  return "bg-[#38BDF8]";
+};
 
 function EditIconButton({ label, onClick }: { label: string; onClick?: () => void }) {
   return (
@@ -486,34 +545,44 @@ function KitchenForm({
   isCategoriesFetching?: boolean;
   onCategorySelectOpenChange?: (open: boolean) => void;
 }) {
+  const resolvedCategoryId = useMemo(() => {
+    if (!initialData) return "";
+    if (initialData.categoryId && Number.isFinite(Number(initialData.categoryId))) {
+      return initialData.categoryId;
+    }
+
+    const matchingCategory = categories.find((category) => category.name === initialData.category);
+    return matchingCategory ? matchingCategory.id.toString() : initialData.categoryId;
+  }, [categories, initialData]);
+
   const categoryOptions = useMemo(() => {
     const apiOptions = categories.map((category) => ({
       ...category,
       value: category.id.toString(),
     }));
 
-    if (!initialData?.categoryId || apiOptions.some((category) => category.value === initialData.categoryId)) {
+    if (!initialData?.categoryId || apiOptions.some((category) => category.value === resolvedCategoryId)) {
       return apiOptions;
     }
 
     return [
       {
-        id: Number.isFinite(Number(initialData.categoryId)) ? Number(initialData.categoryId) : -1,
-        value: initialData.categoryId,
+        id: Number.isFinite(Number(resolvedCategoryId)) ? Number(resolvedCategoryId) : -1,
+        value: resolvedCategoryId,
         name: initialData.category,
         description: "",
         displayOrder: 0,
         status: "Active" as CategoryStatus,
       },
-      ...categories,
+      ...apiOptions,
     ];
-  }, [categories, initialData]);
+  }, [categories, initialData, resolvedCategoryId]);
 
   const form = useForm<KitchenFormData>({
     resolver: zodResolver(kitchenSchema),
     defaultValues: initialData ? {
       name: initialData.name,
-      category: initialData.categoryId,
+      category: resolvedCategoryId,
       location: initialData.location,
       maxCapacity: initialData.maxCapacity,
     } : {
@@ -523,6 +592,20 @@ function KitchenForm({
       maxCapacity: 1,
     },
   });
+
+  useEffect(() => {
+    form.reset(initialData ? {
+      name: initialData.name,
+      category: resolvedCategoryId,
+      location: initialData.location,
+      maxCapacity: initialData.maxCapacity,
+    } : {
+      name: "",
+      category: "",
+      location: "",
+      maxCapacity: 1,
+    });
+  }, [form, initialData, resolvedCategoryId]);
 
   return (
     <Form {...form}>
@@ -549,7 +632,7 @@ function KitchenForm({
               <Select
                 onOpenChange={onCategorySelectOpenChange}
                 onValueChange={field.onChange}
-                defaultValue={field.value}
+                value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -842,6 +925,7 @@ export default function KitchenPage() {
     page: kitchenPage,
     page_size: kitchenPageSize,
   });
+  const { data: dashboardData } = useKitchenDashboard();
   const createCategoryMutation = useCreateKitchenCategory();
   const updateCategoryMutation = useUpdateKitchenCategory();
   const createKitchenMutation = useCreateKitchen();
@@ -890,11 +974,13 @@ export default function KitchenPage() {
     [kitchenOrdersQuery.data]
   );
 
-  const maxKitchenCapacity = Math.max(1, ...kitchens.map((kitchen) => kitchen.maxCapacity));
-  const activeCategories = categories.filter((category) => category.status === "Active").length;
-  const totalCapacity = kitchens.reduce((sum, kitchen) => sum + kitchen.maxCapacity, 0);
-  const avgCapacity = kitchens.length > 0 ? Math.round(totalCapacity / kitchens.length) : 0;
-  const floorsCovered = new Set(kitchens.map((kitchen) => getFloor(kitchen.location))).size;
+  const totalKitchenCategories = dashboardData?.totalKitchenCategories ?? categories.length;
+  const totalKitchens = dashboardData?.totalKitchens ?? kitchens.length;
+  const activeCategories = dashboardData?.totalActiveKitchenCategories ?? categories.filter((category) => category.status === "Active").length;
+  const inactiveCategories = dashboardData?.totalInactiveKitchenCategories ?? Math.max(totalKitchenCategories - activeCategories, 0);
+  const activeKitchens = dashboardData?.totalActiveKitchens ?? kitchens.length;
+  const inactiveKitchens = dashboardData?.totalInactiveKitchens ?? 0;
+  const totalCapacity = dashboardData?.totalKitchenCapacity ?? kitchens.reduce((sum, kitchen) => sum + kitchen.maxCapacity, 0);
 
   const getPendingCount = useCallback((kitchenId: number) =>
     kitchenFilter === kitchenId.toString()
@@ -944,9 +1030,15 @@ export default function KitchenPage() {
   };
 
   const handleCreateKitchen = (data: KitchenFormData) => {
+    const categoryId = Number(data.category);
+    if (!Number.isFinite(categoryId)) {
+      errorFunction("Please select a valid kitchen category.");
+      return;
+    }
+
     createKitchenMutation.mutate({
       name: data.name,
-      category: Number(data.category),
+      category: categoryId,
       location: data.location,
       maxCapacity: data.maxCapacity,
     }, {
@@ -975,11 +1067,17 @@ export default function KitchenPage() {
 
   const handleEditKitchen = (data: KitchenFormData) => {
     if (!editingItem || !('maxCapacity' in editingItem)) return;
+    const categoryId = Number(data.category);
+    if (!Number.isFinite(categoryId)) {
+      errorFunction("Please select a valid kitchen category.");
+      return;
+    }
+
     updateKitchenMutation.mutate({
       id: editingItem.id,
       data: {
         name: data.name,
-        category: Number(data.category),
+        category: categoryId,
         location: data.location,
         maxCapacity: data.maxCapacity,
       },
@@ -1011,6 +1109,9 @@ export default function KitchenPage() {
   };
 
   const openEditDialog = (item: KitchenCategory | Kitchen | KitchenOrder) => {
+    if ("maxCapacity" in item) {
+      setCategoryOptionsEnabled(true);
+    }
     setEditingItem(item);
     setIsEditDialogOpen(true);
   };
@@ -1107,10 +1208,10 @@ export default function KitchenPage() {
           {activeTab === "categories" && (
             <section className="flex flex-col gap-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Total categories" value={categories.length} subLabel="All kitchen types" />
-                <StatCard label="Active" value={activeCategories} subLabel="Currently in use" success />
-                <StatCard label="Inactive" value={categories.length - activeCategories} subLabel="Disabled" />
-                <StatCard label="Total kitchens" value={kitchensQuery.isFetched ? kitchens.length : "-"} subLabel="Across all categories" />
+                <StatCard label="Total categories" value={totalKitchenCategories} subLabel="All kitchen types" icon={Layers3} tone="blue" />
+                <StatCard label="Active" value={activeCategories} subLabel="Currently in use" icon={CheckCircle2} tone="green" />
+                <StatCard label="Inactive" value={inactiveCategories} subLabel="Disabled" icon={CircleOff} tone="red" />
+                <StatCard label="Total kitchens" value={totalKitchens} subLabel="Across all categories" icon={ChefHat} tone="amber" />
               </div>
 
               <div className="overflow-hidden rounded-[var(--border-radius-lg)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]">
@@ -1176,16 +1277,17 @@ export default function KitchenPage() {
           {activeTab === "kitchens" && (
             <section className="flex flex-col gap-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Total kitchens" value={kitchens.length} />
-                <StatCard label="Total capacity" value={totalCapacity} />
-                <StatCard label="Avg capacity" value={avgCapacity} />
-                <StatCard label="Floors covered" value={floorsCovered} />
+                <StatCard label="Total kitchens" value={totalKitchens} icon={CookingPot} tone="blue" />
+                <StatCard label="Active" value={activeKitchens} icon={CheckCircle2} tone="green" />
+                <StatCard label="Inactive" value={inactiveKitchens} icon={CircleOff} tone="red" />
+                <StatCard label="Total capacity" value={totalCapacity} icon={UtensilsCrossed} tone="amber" />
               </div>
 
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {kitchens.map((kitchen) => {
                   const pendingCount = getPendingCount(kitchen.id);
-                  const capacityPercent = Math.round((kitchen.maxCapacity / maxKitchenCapacity) * 100);
+                  const capacityPercent = totalCapacity > 0 ? Math.round((kitchen.maxCapacity / totalCapacity) * 100) : 0;
+                  const displayPercent = kitchen.maxCapacity > 0 ? Math.max(capacityPercent, 1) : 0;
 
                   return (
                     <article
@@ -1222,11 +1324,11 @@ export default function KitchenPage() {
                       <div className="flex items-center gap-3">
                         <div className="h-1 flex-1 rounded-full bg-[var(--color-background-secondary)]">
                           <div
-                            className="h-1 rounded-full bg-[#1D9E75]"
-                            style={{ width: `${capacityPercent}%` }}
+                            className={cn("h-1 rounded-full", getCapacityShareTone(capacityPercent))}
+                            style={{ width: `${displayPercent}%` }}
                           />
                         </div>
-                        <span className="w-9 text-right text-[11px] text-[var(--color-text-tertiary)]">{capacityPercent}%</span>
+                        <span className="w-16 text-right text-[11px] text-[var(--color-text-tertiary)]">{capacityPercent}% share</span>
                       </div>
 
                       <p className="ml-auto flex items-center gap-1.5 text-[11px] text-[var(--color-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">

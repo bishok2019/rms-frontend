@@ -409,21 +409,33 @@ export default function MenuSetup() {
         label: "Total Items",
         value: dashboardData?.totalMenuItems ?? menuItems.length,
         icon: UtensilsCrossed,
+        cardClass: "border-l-sky-500 bg-sky-50/70 dark:bg-sky-950/20",
+        iconClass: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+        valueClass: "text-sky-950 dark:text-sky-100",
       },
       {
         label: "Available",
         value: dashboardData?.activeMenuItems ?? menuItems.filter((item) => item.isAvailable).length,
         icon: CheckCircle2,
+        cardClass: "border-l-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/20",
+        iconClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+        valueClass: "text-emerald-950 dark:text-emerald-100",
       },
       {
         label: "Menus",
         value: dashboardData?.totalMenus ?? categoriesInMenu.size,
         icon: Grid3X3,
+        cardClass: "border-l-violet-500 bg-violet-50/70 dark:bg-violet-950/20",
+        iconClass: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+        valueClass: "text-violet-950 dark:text-violet-100",
       },
       {
         label: "Kitchens",
         value: dashboardData?.totalKitchens ?? kitchensInMenu.size,
         icon: ChefHat,
+        cardClass: "border-l-amber-500 bg-amber-50/70 dark:bg-amber-950/20",
+        iconClass: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+        valueClass: "text-amber-950 dark:text-amber-100",
       },
     ];
   }, [dashboardData, menuItems]);
@@ -563,14 +575,14 @@ export default function MenuSetup() {
             {stats.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="rounded-md border border-border bg-card p-4">
+                <div key={stat.label} className={cn("overflow-hidden rounded-md border border-l-4 border-border p-4", stat.cardClass)}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs font-medium uppercase text-muted-foreground">{stat.label}</p>
-                      <p className="mt-1 text-2xl font-semibold">{stat.value}</p>
+                      <p className={cn("mt-1 text-2xl font-semibold", stat.valueClass)}>{stat.value}</p>
                     </div>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
-                      <Icon className="h-5 w-5 text-muted-foreground" />
+                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-md", stat.iconClass)}>
+                      <Icon className="h-5 w-5" />
                     </div>
                   </div>
                 </div>

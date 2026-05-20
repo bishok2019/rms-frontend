@@ -210,6 +210,15 @@ export interface UserFilters {
   limit?: number;
 }
 
+export interface UserDashboard {
+  totalUsers: number;
+  totalUserTypes: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  userTypeCounts: Record<string, number>;
+  totalRoles: number;
+}
+
 export const fetchUsers = (filters?: UserFilters) => {
   const searchParams = new URLSearchParams();
   if (filters) {
@@ -224,6 +233,12 @@ export const fetchUsers = (filters?: UserFilters) => {
     .get(`auth-app/users/list${queryString ? `?${queryString}` : ''}`)
     .json<ApiResponse<User[]> & Partial<PaginatedApiResponse<User>>>();
 };
+
+export const fetchUserDashboard = () =>
+  privateApiInstance
+    .get("auth-app/users/dashboard")
+    .json<ApiResponse<UserDashboard> | UserDashboard>()
+    .then((response) => ("data" in response ? response.data : response));
 
 export const updateUser = (id: number, body: UpdateUserData) =>
   privateApiInstance

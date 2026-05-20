@@ -6,12 +6,18 @@ import {
   getKitchenCategories,
   updateKitchenCategory,
   createKitchen,
+  getKitchenDashboard,
   getKitchens,
   updateKitchen,
 } from "./api";
 import type { KitchenListParams } from "./api";
 
 const KITCHEN_LIST_STALE_TIME = 5 * 60 * 1000;
+
+export const kitchenDashboardQueryKey = ["kitchen", "dashboard"] as const;
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Something went wrong.";
 
 export const kitchenCategoryQueryKeys = {
   all: ["kitchen-category"] as const,
@@ -34,10 +40,11 @@ export const useCreateKitchenCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kitchenCategoryQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: kitchenDashboardQueryKey });
       successFunction("Kitchen category created successfully.");
     },
-    onError: (error: any) => {
-      errorFunction(error?.message);
+    onError: (error: unknown) => {
+      errorFunction(getErrorMessage(error));
     },
   });
 };
@@ -50,10 +57,11 @@ export const useUpdateKitchenCategory = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kitchenCategoryQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: kitchenDashboardQueryKey });
       successFunction("Kitchen category updated successfully.");
     },
-    onError: (error: any) => {
-      errorFunction(error?.message);
+    onError: (error: unknown) => {
+      errorFunction(getErrorMessage(error));
     },
   });
 };
@@ -75,10 +83,11 @@ export const useCreateKitchen = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kitchenQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: kitchenDashboardQueryKey });
       successFunction("Kitchen created successfully.");
     },
-    onError: (error: any) => {
-      errorFunction(error?.message);
+    onError: (error: unknown) => {
+      errorFunction(getErrorMessage(error));
     },
   });
 };
@@ -91,10 +100,11 @@ export const useUpdateKitchen = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: kitchenQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: kitchenDashboardQueryKey });
       successFunction("Kitchen updated successfully.");
     },
-    onError: (error: any) => {
-      errorFunction(error?.message);
+    onError: (error: unknown) => {
+      errorFunction(getErrorMessage(error));
     },
   });
 };
@@ -117,5 +127,12 @@ export const useAllKitchens = (enabled: boolean = true) => {
     queryFn: () => getKitchens(),
     enabled,
     staleTime: KITCHEN_LIST_STALE_TIME,
+  });
+};
+
+export const useKitchenDashboard = () => {
+  return useQuery({
+    queryKey: kitchenDashboardQueryKey,
+    queryFn: () => getKitchenDashboard(),
   });
 };
