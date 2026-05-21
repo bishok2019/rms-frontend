@@ -108,6 +108,10 @@ export interface KitchenCategory {
 export interface Kitchen {
   id: number;
   category: number | string | KitchenCategory; // Can be id, name, or full object
+  ordersCount?: Array<{
+    status: OrderItemStatus | OrderStatus | string;
+    count: number;
+  }>;
   name: string;
   location: string;
   maxCapacity: number | null;

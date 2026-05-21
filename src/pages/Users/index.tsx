@@ -124,13 +124,13 @@ const cardTones = {
 
 const userTypeTones = [cardTones.cyan, cardTones.orange, cardTones.lime, cardTones.indigo, cardTones.slate];
 
-const userTypeIcons: Record<string, LucideIcon> = {
-  waiter: ConciergeBell,
-  cleaner: Sparkles,
-  manager: BriefcaseBusiness,
-  cook: ChefHat,
-  system: Settings,
-};
+// const userTypeIcons: Record<string, LucideIcon> = {
+//   waiter: ConciergeBell,
+//   cleaner: Sparkles,
+//   manager: BriefcaseBusiness,
+//   cook: ChefHat,
+//   system: Settings,
+// };
 
 const formatUserTypeLabel = (type: string) =>
   type
@@ -222,12 +222,12 @@ export default function UsersPage() {
     { label: "Inactive Users", value: String(inactiveUsers), icon: UserRoundX, tone: cardTones.inactive },
     { label: "User Types", value: String(dashboardData?.totalUserTypes ?? userTypes.length), icon: Tags, tone: cardTones.types },
     { label: "Total Roles", value: String(dashboardData?.totalRoles ?? 0), icon: ShieldCheck, tone: cardTones.roles },
-    ...Object.entries(dashboardUserTypeCounts).map(([type, count], index) => ({
-      label: `${formatUserTypeLabel(type)} Users`,
-      value: String(count),
-      icon: userTypeIcons[type] ?? BadgeCheck,
-      tone: userTypeTones[index % userTypeTones.length],
-    })),
+    // ...Object.entries(dashboardUserTypeCounts).map(([type, count], index) => ({
+    //   label: `${formatUserTypeLabel(type)} Users`,
+    //   value: String(count),
+    //   // icon: userTypeIcons[type] ?? BadgeCheck,
+    //   tone: userTypeTones[index % userTypeTones.length],
+    // })),
   ];
 
   const handleSearch = (query: string) => {
@@ -343,7 +343,7 @@ export default function UsersPage() {
       <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-normal">Users Management</h1>
+              <h1 className="text-2xl font-semibold md:text-xl">User Management</h1>
             <p className="text-sm text-muted-foreground">
               Manage user accounts and permissions.
             </p>
