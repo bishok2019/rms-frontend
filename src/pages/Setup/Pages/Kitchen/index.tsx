@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as z from "zod";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
 import {
   CheckCircle2,
   ChefHat,
@@ -12,6 +15,7 @@ import {
   CircleOff,
   CookingPot,
   Edit2,
+  Filter,
   Grid3X3,
   Hand,
   Layers3,
@@ -59,6 +63,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+
 import { cn } from "@/lib/utils";
 import { ordersApi } from "@/services/orders";
 import { errorFunction } from "@/components/common/Alert";
@@ -853,12 +858,25 @@ export default function KitchenPage() {
 
   // Order filters
   const [kitchenFilter, setKitchenFilter] = useState<string>("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
   const [categoryOptionsEnabled, setCategoryOptionsEnabled] = useState(false);
   const [kitchenOptionsEnabled, setKitchenOptionsEnabled] = useState(false);
   const [categoryPage, setCategoryPage] = useState(1);
   const [kitchenPage, setKitchenPage] = useState(1);
   const [categoryPageSize, setCategoryPageSize] = useState(KITCHEN_PAGE_SIZE);
   const [kitchenPageSize, setKitchenPageSize] = useState(KITCHEN_PAGE_SIZE);
+
+  useEffect(() => {
+    if (!isFilterOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isFilterOpen]);
 
   const categoriesQuery = useKitchenCategories(activeTab === "categories" || categoryOptionsEnabled, {
     page: categoryPage,
@@ -1060,12 +1078,13 @@ export default function KitchenPage() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-background p-4 md:p-6">
+    <div className="flex-1 min-h-0 overflow-hidden bg-background p-4 md:p-6 flex flex-col">
       <div className="flex h-full flex-col gap-4">
         <header className="flex flex-col gap-3 pb-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-[20px] font-medium leading-7 text-foreground">Kitchen management</h1>
-            <p className="text-[13px] text-muted-foreground">Manage stations, categories and live orders</p>
+            <p className="text-[13px] text-muted-foreground">Double-click a category to view its kitchen, or kitchen to view its order items</p>
+            {/* <p className="text-[13px] text-muted-foreground">Manage stations, categories and live orders</p> */}
           </div>
           {activeTab !== "orders" && (
             <Button
@@ -1076,11 +1095,29 @@ export default function KitchenPage() {
               {addButtonLabel}
             </Button>
           )}
-        </header>
+         </header>
+
+        {activeTab === "categories" && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 -mb-2">
+            <StatCard label="Total categories" value={totalKitchenCategories} subLabel="" icon={Layers3} tone="blue" />
+            <StatCard label="Active" value={activeCategories} subLabel="" icon={CheckCircle2} tone="green" />
+            <StatCard label="Inactive" value={inactiveCategories} subLabel="" icon={CircleOff} tone="red" />
+            <StatCard label="Total kitchens" value={totalKitchens} subLabel="" icon={ChefHat} tone="amber" />
+          </div>
+        )}
+
+        {(activeTab === "kitchens" || activeTab === "orders") && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 -mb-2">
+            <StatCard label="Total kitchens" value={totalKitchens} icon={CookingPot} tone="blue" />
+            <StatCard label="Active" value={activeKitchens} icon={CheckCircle2} tone="green" />
+            <StatCard label="Inactive" value={inactiveKitchens} icon={CircleOff} tone="red" />
+            <StatCard label="Total capacity" value={totalCapacity} icon={UtensilsCrossed} tone="amber" />
+          </div>
+        )}
 
         <nav className="relative border-b border-border">
           <div className="flex min-h-11 flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div className="flex min-h-11 items-end gap-1 overflow-x-auto">
+            <div className="flex min-h-11 items-end gap-1 overflow-x-auto overflow-y-hidden">
               <button
                 type="button"
                 onClick={() => setActiveTab("categories")}
@@ -1110,14 +1147,16 @@ export default function KitchenPage() {
                 <CountBadge>{kitchens.length}</CountBadge>
               </button>
               {ordersKitchen && (
-                <div
-                  className={cn(
-                    "ml-2 flex h-10 items-center gap-2 rounded-t-md border-x border-t border-border bg-card px-3 text-[13px]",
-                    activeTab === "orders" ? "translate-y-px text-foreground" : "text-muted-foreground"
-                  )}
-                >
+                 <div
+                   className={cn(
+                     "ml-2 flex h-10 items-center gap-2 rounded-t-md border-x border-t border-border bg-card px-3 text-[13px]",
+                     activeTab === "orders" 
+                       ? "-mt-px text-foreground" 
+                       : "text-muted-foreground"
+                   )}
+                 >
                   <button type="button" onClick={() => setActiveTab("orders")} className="font-medium">
-                    {ordersKitchen.name} orders
+                    {selectedKitchenName} orders
                   </button>
                   {pendingOrders > 0 && (
                     <Badge className="border-0 bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-600 dark:bg-amber-950 dark:text-amber-400">
@@ -1135,12 +1174,116 @@ export default function KitchenPage() {
                 </div>
               )}
             </div>
-            {activePaginationData ? (
+
+            {activeTab === "orders" && (
+              <div className="relative" ref={filterRef}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    setIsFilterOpen((prev) => !prev);
+                  }}
+                  className={cn(
+                    "h-9 gap-2",
+                    (kitchenFilter !== "all" || statusFilter !== "all" || dietaryFilter !== "all") &&
+                      "border-primary text-primary"
+                  )}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                  {(kitchenFilter !== "all" || statusFilter !== "all" || dietaryFilter !== "all") && (
+                    <span className="ml-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
+                </Button>
+
+                {isFilterOpen && (
+                  <div
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full z-[100] mt-2 w-72 rounded-lg border border-border bg-card p-4 shadow-md"
+                  >
+                    <div className="space-y-4">
+                      {/* Kitchen Filter */}
+                      <div>
+                        <div className="mb-1.5 text-xs font-medium text-muted-foreground">Kitchen</div>
+                        <Select
+                          value={kitchenFilter}
+                          onOpenChange={(open) => { if (open) setKitchenOptionsEnabled(true); }}
+                          onValueChange={setKitchenFilter}
+                        >
+                          <SelectTrigger className="h-9 w-full">
+                            <SelectValue placeholder="All kitchens" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All kitchens</SelectItem>
+                            {kitchensQuery.isFetching && <SelectItem value="loading" disabled>Loading...</SelectItem>}
+                            {kitchenOptions.map(k => (
+                              <SelectItem key={k.id} value={k.id.toString()}>{k.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Status Filter */}
+                      <div>
+                        <div className="mb-1.5 text-xs font-medium text-muted-foreground">Status</div>
+                        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                          <SelectTrigger className="h-9 w-full">
+                            <SelectValue placeholder="All status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All status</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="preparing">Preparing</SelectItem>
+                            <SelectItem value="ready">Ready</SelectItem>
+                            <SelectItem value="served">Served</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Dietary Filter */}
+                      <div>
+                        <div className="mb-1.5 text-xs font-medium text-muted-foreground">Dietary Type</div>
+                        <Select value={dietaryFilter} onValueChange={(v) => setDietaryFilter(v as any)}>
+                          <SelectTrigger className="h-9 w-full">
+                            <SelectValue placeholder="All types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All types</SelectItem>
+                            <SelectItem value="Vegetarian">Vegetarian</SelectItem>
+                            <SelectItem value="Non-Vegetarian">Non-Vegetarian</SelectItem>
+                            <SelectItem value="Vegan">Vegan</SelectItem>
+                            <SelectItem value="Gluten Free">Gluten Free</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {(kitchenFilter !== "all" || statusFilter !== "all" || dietaryFilter !== "all") && (
+                        <button
+                          onClick={() => {
+                            setKitchenFilter("all");
+                            setStatusFilter("all");
+                            setDietaryFilter("all");
+                            setIsFilterOpen(false);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activePaginationData && activeTab !== "orders" && (
               <PaginationMeta
                 currentCount={activePaginationData.currentCount}
                 totalCount={activePaginationData.totalCount}
               />
-            ) : null}
+            )}
           </div>
         </nav>
 
@@ -1149,12 +1292,6 @@ export default function KitchenPage() {
 
           {activeTab === "categories" && (
             <section className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Total categories" value={totalKitchenCategories} subLabel="All kitchen types" icon={Layers3} tone="blue" />
-                <StatCard label="Active" value={activeCategories} subLabel="Currently in use" icon={CheckCircle2} tone="green" />
-                <StatCard label="Inactive" value={inactiveCategories} subLabel="Disabled" icon={CircleOff} tone="red" />
-                <StatCard label="Total kitchens" value={totalKitchens} subLabel="Across all categories" icon={ChefHat} tone="amber" />
-              </div>
 
               <div className="overflow-hidden rounded-lg border border-border bg-card">
                 <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1218,12 +1355,6 @@ export default function KitchenPage() {
 
           {activeTab === "kitchens" && (
             <section className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard label="Total kitchens" value={totalKitchens} icon={CookingPot} tone="blue" />
-                <StatCard label="Active" value={activeKitchens} icon={CheckCircle2} tone="green" />
-                <StatCard label="Inactive" value={inactiveKitchens} icon={CircleOff} tone="red" />
-                <StatCard label="Total capacity" value={totalCapacity} icon={UtensilsCrossed} tone="amber" />
-              </div>
 
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {kitchens.map((kitchen) => {
@@ -1309,73 +1440,6 @@ export default function KitchenPage() {
 
           {activeTab === "orders" && ordersKitchen && (
             <section className="flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("kitchens")}
-                  className="hover:text-foreground"
-                >
-                  Kitchens
-                </button>
-                <ChevronRight className="h-3.5 w-3.5" />
-                <span>
-                  {selectedKitchenName} - live orders
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Select
-                  value={kitchenFilter}
-                  onOpenChange={(open) => {
-                    if (open) setKitchenOptionsEnabled(true);
-                  }}
-                  onValueChange={setKitchenFilter}
-                >
-                  <SelectTrigger className="h-9 w-full border border-border bg-card text-[13px] text-foreground shadow-none sm:w-48">
-                    <SelectValue placeholder="All kitchens" />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card text-foreground">
-                    <SelectItem value="all">All kitchens</SelectItem>
-                    {kitchensQuery.isFetching && (
-                      <SelectItem value="loading" disabled>
-                        Loading kitchens...
-                      </SelectItem>
-                    )}
-                    {kitchenOptions.map((kitchen) => (
-                      <SelectItem key={kitchen.id} value={kitchen.id.toString()}>
-                        {kitchen.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | OrderStatus)}>
-                  <SelectTrigger className="h-9 w-full border border-border bg-card text-[13px] text-foreground shadow-none sm:w-44">
-                    <SelectValue placeholder="All status" />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card text-foreground">
-                    <SelectItem value="all">All status</SelectItem>
-                    <SelectItem value="pending">pending</SelectItem>
-                    <SelectItem value="preparing">preparing</SelectItem>
-                    <SelectItem value="ready">ready</SelectItem>
-                    <SelectItem value="served">served</SelectItem>
-                    <SelectItem value="cancelled">cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={dietaryFilter} onValueChange={(value) => setDietaryFilter(value as "all" | DietaryType)}>
-                  <SelectTrigger className="h-9 w-full border border-border bg-card text-[13px] text-foreground shadow-none sm:w-48">
-                    <SelectValue placeholder="All types" />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card text-foreground">
-                    <SelectItem value="all">All types</SelectItem>
-                    <SelectItem value="Vegetarian">Vegetarian</SelectItem>
-                    <SelectItem value="Non-Vegetarian">Non-Vegetarian</SelectItem>
-                    <SelectItem value="Vegan">Vegan</SelectItem>
-                    <SelectItem value="Gluten Free">Gluten Free</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="overflow-hidden rounded-lg border border-border bg-card">
                 <div className="flex items-center justify-between gap-3 px-3 py-3">
