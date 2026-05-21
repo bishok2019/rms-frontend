@@ -149,9 +149,9 @@ const MenuCategoryDashboard: React.FC<MenuCategoryDashboardProps> = ({
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
       {/* Hint Text */}
-      <p className="text-sm text-muted-foreground text-center">
+      {/* <p className="text-sm text-muted-foreground text-center">
         Double-click any category card to open menu items filtered by that category.
-      </p>
+      </p> */}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

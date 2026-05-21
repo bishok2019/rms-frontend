@@ -349,7 +349,7 @@ export default function EmployeesPage() {
       <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-normal">Employee Management</h1>
+            <h1 className="text-xl font-semibold tracking-normal">Employee Management</h1>
             <p className="text-sm text-muted-foreground">
               Manage staff records, compensation, and team structure.
             </p>

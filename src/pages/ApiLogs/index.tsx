@@ -125,7 +125,9 @@ export default function ApiLogsPage() {
     <div className="flex h-screen min-h-0 flex-col overflow-hidden p-6">
       <div className="shrink-0 pb-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">API Logs</h1>
+          <h1 className="text-xl font-bold">API Logs</h1>
+          {/* <h1 className="text-2xl font-semibold md:text-xl">API Logs</h1> */}
+
           <Button onClick={() => fetchLogs(1)} disabled={loading}>
             Refresh
           </Button>

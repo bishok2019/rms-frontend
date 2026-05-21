@@ -1,13 +1,14 @@
 "use client";
 
 import { memo, startTransition, useState, useMemo, useEffect, useCallback } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import type { ChangeEvent, Dispatch, SetStateAction } from "react";
 import { NavLink } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Separator } from "../../components/ui/separator";
 
@@ -60,7 +61,14 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(numericValue) ? numericValue : fallback;
 };
 
-const extractPaginatedItems = <T,>(payload?: PaginatedApiResponse<T> | { results?: T[] }) => {
+type ListPayload<T> = Partial<PaginatedApiResponse<T>> & {
+  count?: number;
+  current_count?: number;
+  results?: T[];
+  total_count?: number;
+};
+
+const extractPaginatedItems = <T,>(payload?: ListPayload<T>) => {
   if (!payload) {
     return [];
   }
@@ -74,6 +82,32 @@ const extractPaginatedItems = <T,>(payload?: PaginatedApiResponse<T> | { results
   }
 
   return [];
+};
+
+const getPaginatedTotalCount = <T,>(payload: ListPayload<T> | undefined, page: number, pageSize: number, currentCount: number) => {
+  const explicitTotal = payload?.totalCount ?? payload?.total_count ?? payload?.count;
+
+  if (typeof explicitTotal === "number") {
+    return explicitTotal;
+  }
+
+  if (payload?.next) {
+    return page * pageSize + 1;
+  }
+
+  return Math.max(currentCount, (page - 1) * pageSize + currentCount);
+};
+
+const getPaginatedTotalPages = <T,>(payload: ListPayload<T> | undefined, page: number, pageSize: number, totalCount: number) => {
+  if (typeof payload?.totalPages === "number") {
+    return Math.max(1, payload.totalPages);
+  }
+
+  if (payload?.next) {
+    return Math.max(page + 1, Math.ceil(totalCount / pageSize));
+  }
+
+  return Math.max(1, Math.ceil(totalCount / pageSize), page);
 };
 
 const scheduleAfterPaint = (callback: () => void) => {
@@ -104,8 +138,8 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-type MenuItemsResponse = PaginatedApiResponse<MenuItem> | { results?: MenuItem[]; next?: string | null; currentPage?: number };
-const MENU_PAGE_SIZE_OPTIONS = [12, 24, 48, 96];
+type MenuItemsResponse = ListPayload<MenuItem>;
+const MENU_PAGE_SIZE_OPTIONS = [5,10, 20, 40, 50];
 
 // Custom Hook: useMenuItemsSearch
 function useMenuItemsSearch(searchTerm: string, category: string, page: number, pageSize: number = 24) {
@@ -115,12 +149,13 @@ function useMenuItemsSearch(searchTerm: string, category: string, page: number, 
       const params = new URLSearchParams();
       params.append("page", page.toString());
       params.append("limit", pageSize.toString());
+      params.append("page_size", pageSize.toString());
       if (searchTerm) params.append("search", searchTerm);
       if (category && category !== "all") params.append("category", category);
 
       const response = await privateApiInstance
         .get(`core-app/menu/items/list?${params.toString()}`, { signal })
-        .json<PaginatedApiResponse<MenuItem>>();
+        .json<MenuItemsResponse>();
 
       return response;
     },
@@ -319,9 +354,15 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
-  useEffect(() => {
+  const handleSearchTermChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
     setCurrentPage(1);
-  }, [debouncedSearchTerm, selectedCategory]);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setCurrentPage(1);
+  };
 
   // API query with debounced search and pagination
   const {
@@ -336,9 +377,9 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
     [menuData]
   );
   const visibleItems = filteredItems;
-  const totalCount = "totalCount" in (menuData ?? {}) ? menuData?.totalCount ?? filteredItems.length : filteredItems.length;
-  const totalPages = "totalPages" in (menuData ?? {}) ? menuData?.totalPages ?? 1 : 1;
-  const apiCurrentPage = "currentPage" in (menuData ?? {}) ? menuData?.currentPage ?? currentPage : currentPage;
+  const apiCurrentPage = menuData?.currentPage ?? currentPage;
+  const totalCount = getPaginatedTotalCount(menuData, apiCurrentPage, pageSize, filteredItems.length);
+  const totalPages = getPaginatedTotalPages(menuData, apiCurrentPage, pageSize, totalCount);
 
   if (isLoading) {
     return (
@@ -350,11 +391,11 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
               <Input
                 placeholder="Search items..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchTermChange}
                 className="pl-10"
               />
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
@@ -389,11 +430,11 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
               <Input
                 placeholder="Search items..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchTermChange}
                 className="pl-10"
               />
             </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
@@ -427,11 +468,11 @@ const MenuGrid = memo(function MenuGrid({ onItemClick }: { onItemClick: (item: M
             <Input
               placeholder="Search items..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchTermChange}
               className="pl-10"
             />
           </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>

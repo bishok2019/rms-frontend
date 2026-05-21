@@ -64,7 +64,7 @@ export default function OrdersPage() {
     <div className="flex h-screen min-h-0 flex-col overflow-hidden p-6">
       <div className="z-10 mb-6 flex shrink-0 justify-between pb-4">
         <div>
-          <h1 className="text-2xl font-bold">Orders Management</h1>
+          <h1 className="text-xl font-bold">Orders Management</h1>
           <p className="text-muted-foreground">
             View and manage restaurant orders
           </p>

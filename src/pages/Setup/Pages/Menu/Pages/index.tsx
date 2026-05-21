@@ -513,9 +513,12 @@ export default function MenuSetup() {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">Menu Setup</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <h1 className="text-2xl font-semibold tracking-normal md:text-xl">Menu Setup</h1>
+              {/* <p className="mt-1 text-sm text-muted-foreground">
                 Manage categories, kitchens, item visibility, and POS-ready pricing.
+              </p> */}
+              <p className="text-sm text-muted-foreground text-center">
+                Double-click any category card to open menu items filtered by that category.
               </p>
             </div>
 
@@ -528,7 +531,7 @@ export default function MenuSetup() {
                       className="h-10 rounded-md"
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Category
+                      Menu
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="w-full border-border bg-card sm:max-w-md">
@@ -552,7 +555,7 @@ export default function MenuSetup() {
                       className="h-10 rounded-md"
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Item
+                      Item
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="w-full border-border bg-card sm:max-w-lg">
@@ -971,7 +974,7 @@ function PaginationMeta({
   return (
     <div className="text-base font-medium text-muted-foreground">
       Showing <span className="text-foreground">{currentCount}</span> of{" "}
-      <span className="text-foreground">{totalCount}</span>
+      <span className="text-foreground">{totalCount}</span>     
     </div>
   );
 }
