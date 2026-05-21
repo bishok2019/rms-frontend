@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { useTheme } from "@/contexts/theme-context";
+
 
 import { ListPagination } from "@/components/common/ListPagination";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ordersApi } from "@/services/orders";
+import { errorFunction } from "@/components/common/Alert";
 import type {
   Kitchen as ApiKitchen,
   KitchenCategory as ApiKitchenCategory,
@@ -99,6 +100,10 @@ type Kitchen = {
   categoryId: string;
   location: string;
   maxCapacity: number;
+  ordersCount: Array<{
+    status: OrderStatus | string;
+    count: number;
+  }>;
 };
 
 type KitchenOrder = {
@@ -143,52 +148,12 @@ type OrderItemFormData = z.infer<typeof orderItemSchema>;
 
 
 
-const darkPageStyle = {
-  "--color-background-primary": "#121212",
-  "--color-background-secondary": "#1b1b1b",
-  "--color-background-tertiary": "#0f0f0f",
-  "--color-text-primary": "#f4f4f4",
-  "--color-text-secondary": "rgba(244, 244, 244, 0.68)",
-  "--color-text-tertiary": "rgba(244, 244, 244, 0.46)",
-  "--color-border-tertiary": "rgba(255, 255, 255, 0.15)",
-  "--color-border-secondary": "rgba(255, 255, 255, 0.3)",
-  "--color-background-success": "rgba(29, 158, 117, 0.16)",
-  "--color-text-success": "#52d7a7",
-  "--color-background-warning": "rgba(239, 159, 39, 0.16)",
-  "--color-text-warning": "#f2b661",
-  "--color-background-info": "rgba(78, 150, 255, 0.16)",
-  "--color-text-info": "#82b7ff",
-  "--color-background-danger": "rgba(226, 75, 74, 0.16)",
-  "--color-text-danger": "#ff8d8c",
-  "--border-radius-md": "8px",
-  "--border-radius-lg": "12px",
-} as React.CSSProperties;
 
-const lightPageStyle = {
-  "--color-background-primary": "#ffffff",
-  "--color-background-secondary": "#f8f9fa",
-  "--color-background-tertiary": "#f1f3f4",
-  "--color-text-primary": "#1a1a1a",
-  "--color-text-secondary": "rgba(26, 26, 26, 0.68)",
-  "--color-text-tertiary": "rgba(26, 26, 26, 0.46)",
-  "--color-border-tertiary": "rgba(0, 0, 0, 0.12)",
-  "--color-border-secondary": "rgba(0, 0, 0, 0.24)",
-  "--color-background-success": "rgba(29, 158, 117, 0.12)",
-  "--color-text-success": "#1d9e75",
-  "--color-background-warning": "rgba(239, 159, 39, 0.12)",
-  "--color-text-warning": "#ef9f27",
-  "--color-background-info": "rgba(78, 150, 255, 0.12)",
-  "--color-text-info": "#4e96ff",
-  "--color-background-danger": "rgba(226, 75, 74, 0.12)",
-  "--color-text-danger": "#e24b4a",
-  "--border-radius-md": "8px",
-  "--border-radius-lg": "12px",
-} as React.CSSProperties;
 
 const tableHeadClass =
-  "bg-[var(--color-background-secondary)] px-[18px] py-[10px] text-[11px] font-medium uppercase text-[var(--color-text-secondary)]";
+  "bg-muted px-3 py-2 text-[11px] font-medium uppercase text-muted-foreground";
 
-const tableCellClass = "px-[18px] py-3 text-[13px]";
+const tableCellClass = "px-3 py-3 text-sm";
 
 const getRelationId = (value: ApiKitchen["category"]) => {
   if (typeof value === "object" && value !== null && "id" in value) {
@@ -235,6 +200,7 @@ const toKitchenRow = (kitchen: ApiKitchen): Kitchen => ({
   categoryId: getRelationId(kitchen.category),
   location: kitchen.location ?? "",
   maxCapacity: kitchen.maxCapacity ?? 0,
+  ordersCount: kitchen.ordersCount ?? [],
 });
 
 const toDietaryLabel = (value?: string | null): DietaryType => {
@@ -248,8 +214,8 @@ const toDietaryLabel = (value?: string | null): DietaryType => {
   return labels[value ?? ""] ?? "Vegetarian";
 };
 
-const toDietaryApiValue = (value: DietaryType) => {
-  const values: Record<DietaryType, string> = {
+const toDietaryApiValue = (value: DietaryType): "veg" | "non_veg" | "vegan" | "gluten_free" => {
+  const values: Record<DietaryType, "veg" | "non_veg" | "vegan" | "gluten_free"> = {
     Vegetarian: "veg",
     "Non-Vegetarian": "non_veg",
     Vegan: "vegan",
@@ -272,7 +238,7 @@ const toOrderRow = (item: ApiOrderItem): KitchenOrder => ({
 
 function CountBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-[var(--color-background-secondary)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)]">
+    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
       {children}
     </span>
   );
@@ -286,22 +252,22 @@ function PaginationMeta({
   totalCount: number;
 }) {
   return (
-    <div className="pb-3 text-[13px] font-medium text-[var(--color-text-secondary)] md:pb-3 md:pr-1">
-      Showing <span className="text-[var(--color-text-primary)]">{currentCount}</span> of{" "}
-      <span className="text-[var(--color-text-primary)]">{totalCount}</span>
+    <div className="pb-3 text-[13px] font-medium text-muted-foreground md:pb-3 md:pr-1">
+      Showing <span className="text-foreground">{currentCount}</span> of{" "}
+      <span className="text-foreground">{totalCount}</span>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: CategoryStatus | OrderStatus }) {
-  const classes = {
-    Active: "bg-[var(--color-background-success)] text-[var(--color-text-success)]",
-    Inactive: "bg-[var(--color-background-secondary)] text-[var(--color-text-tertiary)]",
-    pending: "bg-[var(--color-background-warning)] text-[var(--color-text-warning)]",
-    preparing: "bg-[var(--color-background-info)] text-[var(--color-text-info)]",
-    ready: "bg-[var(--color-background-success)] text-[var(--color-text-success)]",
-    served: "bg-[var(--color-background-success)] text-[var(--color-text-success)]",
-    cancelled: "bg-[var(--color-background-danger)] text-[var(--color-text-danger)]",
+  const classes: Record<string, string> = {
+    Active: "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+    Inactive: "bg-muted text-muted-foreground",
+    pending: "bg-amber-500/15 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
+    preparing: "bg-blue-500/15 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+    ready: "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+    served: "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+    cancelled: "bg-red-500/15 text-red-600 dark:bg-red-950 dark:text-red-400",
   };
 
   return (
@@ -328,7 +294,7 @@ function DietaryBadge({ dietary }: { dietary: DietaryType }) {
 
 function SpiceIndicator({ spice }: { spice: SpiceLevel }) {
   const classes = {
-    none: "bg-[var(--color-text-tertiary)]",
+    none: "bg-muted-foreground",
     mild: "bg-[#EF9F27]",
     medium: "bg-[#D85A30]",
     hot: "bg-[#E24B4A]",
@@ -336,7 +302,7 @@ function SpiceIndicator({ spice }: { spice: SpiceLevel }) {
   };
 
   return (
-    <span className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)]">
+    <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
       <span className={cn("h-2 w-2 rounded-full", classes[spice])} />
       {spice}
     </span>
@@ -358,66 +324,69 @@ function StatCard({
 }) {
   const toneClasses = {
     blue: {
-      card: "border-l-[#38BDF8] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#0EA5E9_18%)]",
-      icon: "bg-[#0EA5E9]/15 text-[#7DD3FC]",
-      value: "text-[#BAE6FD]",
+      card: "border-l-sky-500 bg-sky-50/70 dark:bg-sky-950/20",
+      icon: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+      value: "text-sky-950 dark:text-sky-100",
     },
     green: {
-      card: "border-l-[#22C55E] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#16A34A_18%)]",
-      icon: "bg-[#22C55E]/15 text-[#86EFAC]",
-      value: "text-[#BBF7D0]",
+      card: "border-l-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/20",
+      icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+      value: "text-emerald-950 dark:text-emerald-100",
     },
     red: {
-      card: "border-l-[#F43F5E] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#E11D48_18%)]",
-      icon: "bg-[#F43F5E]/15 text-[#FDA4AF]",
-      value: "text-[#FFE4E6]",
+      card: "border-l-rose-500 bg-rose-50/70 dark:bg-rose-950/20",
+      icon: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+      value: "text-rose-950 dark:text-rose-100",
     },
     violet: {
-      card: "border-l-[#8B5CF6] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#7C3AED_18%)]",
-      icon: "bg-[#8B5CF6]/15 text-[#C4B5FD]",
-      value: "text-[#EDE9FE]",
+      card: "border-l-violet-500 bg-violet-50/70 dark:bg-violet-950/20",
+      icon: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+      value: "text-violet-950 dark:text-violet-100",
     },
     amber: {
-      card: "border-l-[#F59E0B] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#D97706_18%)]",
-      icon: "bg-[#F59E0B]/15 text-[#FCD34D]",
-      value: "text-[#FEF3C7]",
+      card: "border-l-amber-500 bg-amber-50/70 dark:bg-amber-950/20",
+      icon: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+      value: "text-amber-950 dark:text-amber-100",
     },
     cyan: {
-      card: "border-l-[#06B6D4] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#0891B2_18%)]",
-      icon: "bg-[#06B6D4]/15 text-[#67E8F9]",
-      value: "text-[#CFFAFE]",
+      card: "border-l-cyan-500 bg-cyan-50/70 dark:bg-cyan-950/20",
+      icon: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300",
+      value: "text-cyan-950 dark:text-cyan-100",
     },
     slate: {
-      card: "border-l-[#94A3B8] bg-[color-mix(in_srgb,var(--color-background-secondary)_82%,#64748B_18%)]",
-      icon: "bg-[#94A3B8]/15 text-[#CBD5E1]",
-      value: "text-[#F1F5F9]",
+      card: "border-l-slate-500 bg-slate-50/70 dark:bg-slate-950/20",
+      icon: "bg-slate-100 text-slate-700 dark:bg-slate-950 dark:text-slate-300",
+      value: "text-slate-950 dark:text-slate-100",
     },
   }[tone];
 
   return (
-    <div className={cn("overflow-hidden rounded-[var(--border-radius-md)] border-l-4 px-4 py-[14px]", toneClasses.card)}>
+    <div className={cn("overflow-hidden rounded-md border-l-4 px-4 py-[14px]", toneClasses.card)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-medium uppercase text-[var(--color-text-secondary)]">{label}</p>
+          <p className="text-[11px] font-medium uppercase text-muted-foreground">{label}</p>
           <p className={cn("mt-2 text-[22px] font-medium leading-none", toneClasses.value)}>
             {value}
           </p>
         </div>
-        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--border-radius-md)]", toneClasses.icon)}>
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-md", toneClasses.icon)}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      {subLabel && <p className="mt-1 text-[11px] text-[var(--color-text-tertiary)]">{subLabel}</p>}
+      {subLabel && <p className="mt-1 text-[11px] text-muted-foreground">{subLabel}</p>}
     </div>
   );
 }
 
-const getCapacityShareTone = (percent: number) => {
-  if (percent >= 30) return "bg-[#F97316]";
-  if (percent >= 20) return "bg-[#F59E0B]";
-  if (percent >= 10) return "bg-[#1D9E75]";
+const getPreparingLoadTone = (percent: number) => {
+  if (percent >= 90) return "bg-[#DC2626]";
+  if (percent >= 70) return "bg-[#F97316]";
+  if (percent >= 40) return "bg-[#F59E0B]";
   return "bg-[#38BDF8]";
 };
+
+const getKitchenPreparingCount = (kitchen: Kitchen) =>
+  kitchen.ordersCount.find((orderCount) => orderCount.status === "preparing")?.count ?? 0;
 
 function EditIconButton({ label, onClick }: { label: string; onClick?: () => void }) {
   return (
@@ -426,7 +395,7 @@ function EditIconButton({ label, onClick }: { label: string; onClick?: () => voi
       aria-label={label}
       size="icon"
       variant="outline"
-      className="h-[30px] w-[30px] border-[0.5px] border-[var(--color-border-tertiary)] bg-transparent text-[var(--color-text-secondary)] shadow-none hover:border-[var(--color-border-secondary)] hover:bg-[var(--color-background-secondary)] hover:text-[var(--color-text-primary)]"
+      className="h-[30px] w-[30px] border border-border bg-transparent text-muted-foreground shadow-none hover:border-foreground/30 hover:bg-muted hover:text-foreground"
     >
       <Edit2 className="h-[13px] w-[13px]" />
     </Button>
@@ -872,36 +841,10 @@ function OrderItemForm({
 
 export default function KitchenPage() {
   const queryClient = useQueryClient();
-  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<KitchenTab>("categories");
   const [ordersKitchen, setOrdersKitchen] = useState<Kitchen | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | DietaryType>("all");
-  const [effectiveTheme, setEffectiveTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const updateEffectiveTheme = () => {
-      if (theme === "dark") {
-        setEffectiveTheme("dark");
-      } else if (theme === "light") {
-        setEffectiveTheme("light");
-      } else {
-        // system
-        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        setEffectiveTheme(systemTheme);
-      }
-    };
-
-    updateEffectiveTheme();
-
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      mediaQuery.addEventListener("change", updateEffectiveTheme);
-      return () => mediaQuery.removeEventListener("change", updateEffectiveTheme);
-    }
-  }, [theme]);
-
-  const pageStyle = effectiveTheme === "dark" ? darkPageStyle : lightPageStyle;
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -1001,7 +944,7 @@ export default function KitchenPage() {
     activeTab === "categories" ? categoriesQuery.data : activeTab === "kitchens" ? kitchensQuery.data : null;
 
   const addButtonLabel =
-    activeTab === "categories" ? "Add category" : activeTab === "kitchens" ? "Add kitchen" : "";
+    activeTab === "categories" ? "Category" : activeTab === "kitchens" ? "Kitchen" : "";
 
   const openOrdersTab = (kitchen: Kitchen) => {
     setOrdersKitchen(kitchen);
@@ -1117,20 +1060,17 @@ export default function KitchenPage() {
   };
 
   return (
-    <div
-      className="flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--color-background-tertiary)] p-6 text-[var(--color-text-primary)]"
-      style={pageStyle}
-    >
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col">
-        <header className="flex flex-col gap-4 pb-5 md:flex-row md:items-center md:justify-between">
+    <div className="h-screen overflow-hidden bg-background p-4 md:p-6">
+      <div className="flex h-full flex-col gap-4">
+        <header className="flex flex-col gap-3 pb-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-[20px] font-medium leading-7 text-[var(--color-text-primary)]">Kitchen management</h1>
-            <p className="text-[13px] text-[var(--color-text-secondary)]">Manage stations, categories and live orders</p>
+            <h1 className="text-[20px] font-medium leading-7 text-foreground">Kitchen management</h1>
+            <p className="text-[13px] text-muted-foreground">Manage stations, categories and live orders</p>
           </div>
           {activeTab !== "orders" && (
             <Button
               onClick={openCreateDialog}
-              className="h-9 gap-2 rounded-[var(--border-radius-md)] px-4 text-[13px] font-medium"
+              className="h-9 gap-2 rounded-md px-4 text-[13px] font-medium"
             >
               <Plus className="h-4 w-4" />
               {addButtonLabel}
@@ -1138,7 +1078,7 @@ export default function KitchenPage() {
           )}
         </header>
 
-        <nav className="relative border-b-[0.5px] border-[var(--color-border-tertiary)]">
+        <nav className="relative border-b border-border">
           <div className="flex min-h-11 flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div className="flex min-h-11 items-end gap-1 overflow-x-auto">
               <button
@@ -1147,8 +1087,8 @@ export default function KitchenPage() {
                 className={cn(
                   "flex h-11 items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition-colors",
                   activeTab === "categories"
-                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
-                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Grid3X3 className="h-4 w-4" />
@@ -1161,8 +1101,8 @@ export default function KitchenPage() {
                 className={cn(
                   "flex h-11 items-center gap-2 border-b-2 px-4 text-[13px] font-medium transition-colors",
                   activeTab === "kitchens"
-                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
-                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
                 <CookingPot className="h-4 w-4" />
@@ -1172,15 +1112,15 @@ export default function KitchenPage() {
               {ordersKitchen && (
                 <div
                   className={cn(
-                    "ml-2 flex h-10 items-center gap-2 rounded-t-[var(--border-radius-md)] border-x-[0.5px] border-t-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-3 text-[13px]",
-                    activeTab === "orders" ? "translate-y-px text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
+                    "ml-2 flex h-10 items-center gap-2 rounded-t-md border-x border-t border-border bg-card px-3 text-[13px]",
+                    activeTab === "orders" ? "translate-y-px text-foreground" : "text-muted-foreground"
                   )}
                 >
                   <button type="button" onClick={() => setActiveTab("orders")} className="font-medium">
                     {ordersKitchen.name} orders
                   </button>
                   {pendingOrders > 0 && (
-                    <Badge className="border-0 bg-[var(--color-background-warning)] px-2 py-0.5 text-[11px] text-[var(--color-text-warning)]">
+                    <Badge className="border-0 bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-600 dark:bg-amber-950 dark:text-amber-400">
                       {pendingOrders} pending
                     </Badge>
                   )}
@@ -1188,7 +1128,7 @@ export default function KitchenPage() {
                     type="button"
                     aria-label="Close orders tab"
                     onClick={closeOrdersTab}
-                    className="rounded p-1 text-[var(--color-text-tertiary)] hover:bg-[var(--color-background-secondary)] hover:text-[var(--color-text-primary)]"
+                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -1204,9 +1144,11 @@ export default function KitchenPage() {
           </div>
         </nav>
 
-        <main className="min-h-0 flex-1 overflow-auto py-5">
+        {/* <main className="min-h-0 flex-1 overflow-auto py-5"> */}
+        <main className="min-h-0 flex-1 overflow-auto">
+
           {activeTab === "categories" && (
-            <section className="flex flex-col gap-5">
+            <section className="flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Total categories" value={totalKitchenCategories} subLabel="All kitchen types" icon={Layers3} tone="blue" />
                 <StatCard label="Active" value={activeCategories} subLabel="Currently in use" icon={CheckCircle2} tone="green" />
@@ -1214,17 +1156,17 @@ export default function KitchenPage() {
                 <StatCard label="Total kitchens" value={totalKitchens} subLabel="Across all categories" icon={ChefHat} tone="amber" />
               </div>
 
-              <div className="overflow-hidden rounded-[var(--border-radius-lg)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]">
-                <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <h2 className="text-[15px] font-medium text-[var(--color-text-primary)]">Kitchen categories</h2>
-                  <p className="flex items-center gap-1.5 text-[12px] text-[var(--color-text-tertiary)]">
+              <div className="overflow-hidden rounded-lg border border-border bg-card">
+                <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-[15px] font-medium text-foreground">Kitchen categories</h2>
+                  <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                     <Hand className="h-3.5 w-3.5" />
                     Double-click a row to view its kitchens
                   </p>
                 </div>
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-[var(--color-border-tertiary)] hover:bg-transparent">
+                    <TableRow className="border-border hover:bg-transparent">
                       <TableHead className={tableHeadClass}>Name</TableHead>
                       <TableHead className={tableHeadClass}>Description</TableHead>
                       <TableHead className={tableHeadClass}>Display order</TableHead>
@@ -1237,11 +1179,11 @@ export default function KitchenPage() {
                       <TableRow
                         key={category.id}
                         onDoubleClick={() => setActiveTab("kitchens")}
-                        className="cursor-pointer border-[var(--color-border-tertiary)] hover:bg-[var(--color-background-secondary)]"
+                        className="cursor-pointer border-border hover:bg-muted"
                       >
-                        <TableCell className={cn(tableCellClass, "font-medium text-[var(--color-text-primary)]")}>{category.name}</TableCell>
-                        <TableCell className={cn(tableCellClass, "text-[var(--color-text-secondary)]")}>{category.description}</TableCell>
-                        <TableCell className={cn(tableCellClass, "text-[var(--color-text-secondary)]")}>{category.displayOrder}</TableCell>
+                        <TableCell className={cn(tableCellClass, "font-medium text-foreground")}>{category.name}</TableCell>
+                        <TableCell className={cn(tableCellClass, "text-muted-foreground")}>{category.description}</TableCell>
+                        <TableCell className={cn(tableCellClass, "text-muted-foreground")}>{category.displayOrder}</TableCell>
                         <TableCell className={tableCellClass}>
                           <StatusBadge status={category.status} />
                         </TableCell>
@@ -1275,7 +1217,7 @@ export default function KitchenPage() {
           )}
 
           {activeTab === "kitchens" && (
-            <section className="flex flex-col gap-5">
+            <section className="flex flex-col gap-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Total kitchens" value={totalKitchens} icon={CookingPot} tone="blue" />
                 <StatCard label="Active" value={activeKitchens} icon={CheckCircle2} tone="green" />
@@ -1283,55 +1225,60 @@ export default function KitchenPage() {
                 <StatCard label="Total capacity" value={totalCapacity} icon={UtensilsCrossed} tone="amber" />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {kitchens.map((kitchen) => {
                   const pendingCount = getPendingCount(kitchen.id);
-                  const capacityPercent = totalCapacity > 0 ? Math.round((kitchen.maxCapacity / totalCapacity) * 100) : 0;
-                  const displayPercent = kitchen.maxCapacity > 0 ? Math.max(capacityPercent, 1) : 0;
+                  const preparingCount = getKitchenPreparingCount(kitchen);
+                  const preparingPercent = kitchen.maxCapacity > 0
+                    ? Math.min(100, Math.round((preparingCount / kitchen.maxCapacity) * 100))
+                    : 0;
+                  const displayPercent = preparingCount > 0 ? Math.max(preparingPercent, 1) : 0;
 
                   return (
                     <article
                       key={kitchen.id}
                       onDoubleClick={() => openOrdersTab(kitchen)}
-                      className="group flex cursor-pointer flex-col gap-4 rounded-[var(--border-radius-lg)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] p-4 transition-colors hover:border-[var(--color-border-secondary)]"
+                      className="group flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-border"
                     >
                       <div className="flex items-start justify-between gap-3">
                          <div className="min-w-0">
                            <div className="flex flex-wrap items-center gap-2">
-                             <h3 className="text-[14px] font-medium text-[var(--color-text-primary)]">{kitchen.name}</h3>
+                             <h3 className="text-[14px] font-medium text-foreground">{kitchen.name}</h3>
                              {pendingCount > 0 && (
-                               <Badge className="border-0 bg-[var(--color-background-warning)] px-2 py-0.5 text-[11px] text-[var(--color-text-warning)]">
+                               <Badge className="border-0 bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-600 dark:bg-amber-950 dark:text-amber-400">
                                  {pendingCount} pending
                                </Badge>
                              )}
                            </div>
-                           <p className="mt-0.5 text-[12px] text-[var(--color-text-secondary)]">{kitchen.category}</p>
+                           <p className="mt-0.5 text-[12px] text-muted-foreground">{kitchen.category}</p>
                          </div>
                          <EditIconButton label={`Edit ${kitchen.name}`} onClick={() => openEditDialog(kitchen)} />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-[10px] font-medium uppercase text-[var(--color-text-tertiary)]">Location</p>
-                          <p className="mt-1 text-[13px] font-medium text-[var(--color-text-primary)]">{kitchen.location}</p>
+                          <p className="text-[10px] font-medium uppercase text-muted-foreground">Location</p>
+                          <p className="mt-1 text-[13px] font-medium text-foreground">{kitchen.location}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-medium uppercase text-[var(--color-text-tertiary)]">Max capacity</p>
-                          <p className="mt-1 text-[13px] font-medium text-[var(--color-text-primary)]">{kitchen.maxCapacity}</p>
+                          <p className="text-[10px] font-medium uppercase text-muted-foreground">Max capacity</p>
+                          <p className="mt-1 text-[13px] font-medium text-foreground">{kitchen.maxCapacity}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <div className="h-1 flex-1 rounded-full bg-[var(--color-background-secondary)]">
+                        <div className="h-1 flex-1 rounded-full bg-muted">
                           <div
-                            className={cn("h-1 rounded-full", getCapacityShareTone(capacityPercent))}
+                            className={cn("h-1 rounded-full", getPreparingLoadTone(preparingPercent))}
                             style={{ width: `${displayPercent}%` }}
                           />
                         </div>
-                        <span className="w-16 text-right text-[11px] text-[var(--color-text-tertiary)]">{capacityPercent}% share</span>
+                        <span className="w-24 text-right text-[11px] text-muted-foreground">
+                          {preparingCount}/{kitchen.maxCapacity} workload
+                        </span>
                       </div>
 
-                      <p className="ml-auto flex items-center gap-1.5 text-[11px] text-[var(--color-text-tertiary)] opacity-0 transition-opacity group-hover:opacity-100">
+                      <p className="ml-auto flex items-center gap-1.5 text-[11px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
                         <Hand className="h-3.5 w-3.5" />
                         Double-click to view orders
                       </p>
@@ -1361,12 +1308,12 @@ export default function KitchenPage() {
           )}
 
           {activeTab === "orders" && ordersKitchen && (
-            <section className="flex flex-col gap-5">
-              <div className="flex items-center gap-2 text-[12px] text-[var(--color-text-tertiary)]">
+            <section className="flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
                 <button
                   type="button"
                   onClick={() => setActiveTab("kitchens")}
-                  className="hover:text-[var(--color-text-primary)]"
+                  className="hover:text-foreground"
                 >
                   Kitchens
                 </button>
@@ -1384,10 +1331,10 @@ export default function KitchenPage() {
                   }}
                   onValueChange={setKitchenFilter}
                 >
-                  <SelectTrigger className="h-9 w-full border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[13px] text-[var(--color-text-primary)] shadow-none sm:w-48">
+                  <SelectTrigger className="h-9 w-full border border-border bg-card text-[13px] text-foreground shadow-none sm:w-48">
                     <SelectValue placeholder="All kitchens" />
                   </SelectTrigger>
-                  <SelectContent className="border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-primary)]">
+                  <SelectContent className="border-border bg-card text-foreground">
                     <SelectItem value="all">All kitchens</SelectItem>
                     {kitchensQuery.isFetching && (
                       <SelectItem value="loading" disabled>
@@ -1403,10 +1350,10 @@ export default function KitchenPage() {
                 </Select>
 
                 <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | OrderStatus)}>
-                  <SelectTrigger className="h-9 w-full border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[13px] text-[var(--color-text-primary)] shadow-none sm:w-44">
+                  <SelectTrigger className="h-9 w-full border border-border bg-card text-[13px] text-foreground shadow-none sm:w-44">
                     <SelectValue placeholder="All status" />
                   </SelectTrigger>
-                  <SelectContent className="border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-primary)]">
+                  <SelectContent className="border-border bg-card text-foreground">
                     <SelectItem value="all">All status</SelectItem>
                     <SelectItem value="pending">pending</SelectItem>
                     <SelectItem value="preparing">preparing</SelectItem>
@@ -1417,10 +1364,10 @@ export default function KitchenPage() {
                 </Select>
 
                 <Select value={dietaryFilter} onValueChange={(value) => setDietaryFilter(value as "all" | DietaryType)}>
-                  <SelectTrigger className="h-9 w-full border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[13px] text-[var(--color-text-primary)] shadow-none sm:w-48">
+                  <SelectTrigger className="h-9 w-full border border-border bg-card text-[13px] text-foreground shadow-none sm:w-48">
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
-                  <SelectContent className="border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)] text-[var(--color-text-primary)]">
+                  <SelectContent className="border-border bg-card text-foreground">
                     <SelectItem value="all">All types</SelectItem>
                     <SelectItem value="Vegetarian">Vegetarian</SelectItem>
                     <SelectItem value="Non-Vegetarian">Non-Vegetarian</SelectItem>
@@ -1430,16 +1377,16 @@ export default function KitchenPage() {
                 </Select>
               </div>
 
-              <div className="overflow-hidden rounded-[var(--border-radius-lg)] border-[0.5px] border-[var(--color-border-tertiary)] bg-[var(--color-background-primary)]">
-                <div className="flex items-center justify-between gap-3 px-4 py-4">
-                  <h2 className="text-[15px] font-medium text-[var(--color-text-primary)]">
+              <div className="overflow-hidden rounded-lg border border-border bg-card">
+                <div className="flex items-center justify-between gap-3 px-3 py-3">
+                  <h2 className="text-[15px] font-medium text-foreground">
                     {selectedKitchenName} - live orders
                   </h2>
-                  <p className="text-[12px] text-[var(--color-text-secondary)]">{filteredOrders.length} orders</p>
+                  <p className="text-[12px] text-muted-foreground">{filteredOrders.length} orders</p>
                 </div>
                 <Table>
                    <TableHeader>
-                     <TableRow className="border-[var(--color-border-tertiary)] hover:bg-transparent">
+                     <TableRow className="border-border hover:bg-transparent">
                        <TableHead className={tableHeadClass}>Order #</TableHead>
                        <TableHead className={tableHeadClass}>Item</TableHead>
                        <TableHead className={tableHeadClass}>Qty</TableHead>
@@ -1452,8 +1399,8 @@ export default function KitchenPage() {
                    </TableHeader>
                   <TableBody>
                      {filteredOrders.length === 0 ? (
-                       <TableRow className="border-[var(--color-border-tertiary)] hover:bg-transparent">
-                         <TableCell colSpan={8} className="px-[18px] py-10 text-center text-[13px] text-[var(--color-text-secondary)]">
+                       <TableRow className="border-border hover:bg-transparent">
+                         <TableCell colSpan={8} className="px-[18px] py-10 text-center text-[13px] text-muted-foreground">
                            No orders match the current filters
                          </TableCell>
                        </TableRow>
@@ -1461,11 +1408,11 @@ export default function KitchenPage() {
                       filteredOrders.map((order) => (
                         <TableRow
                           key={order.id}
-                          className="border-[var(--color-border-tertiary)] hover:bg-[var(--color-background-secondary)]"
+                          className="border-border hover:bg-muted"
                         >
-                          <TableCell className={cn(tableCellClass, "font-medium text-[var(--color-text-primary)]")}>{order.orderNumber}</TableCell>
-                          <TableCell className={cn(tableCellClass, "text-[var(--color-text-primary)]")}>{order.item}</TableCell>
-                          <TableCell className={cn(tableCellClass, "text-[var(--color-text-secondary)]")}>{order.quantity.toFixed(2)}</TableCell>
+                          <TableCell className={cn(tableCellClass, "font-medium text-foreground")}>{order.orderNumber}</TableCell>
+                          <TableCell className={cn(tableCellClass, "text-foreground")}>{order.item}</TableCell>
+                          <TableCell className={cn(tableCellClass, "text-muted-foreground")}>{order.quantity.toFixed(2)}</TableCell>
                           <TableCell className={tableCellClass}>
                             <StatusBadge status={order.status} />
                           </TableCell>
@@ -1475,7 +1422,7 @@ export default function KitchenPage() {
                            <TableCell className={tableCellClass}>
                              <SpiceIndicator spice={order.spice} />
                            </TableCell>
-                           <TableCell className={cn(tableCellClass, "text-[var(--color-text-secondary)]")}>{order.notes}</TableCell>
+                           <TableCell className={cn(tableCellClass, "text-muted-foreground")}>{order.notes}</TableCell>
                            <TableCell className={cn(tableCellClass, "text-right")}>
                              <EditIconButton label={`Edit order ${order.orderNumber}`} onClick={() => openEditDialog(order)} />
                            </TableCell>
@@ -1547,7 +1494,7 @@ export default function KitchenPage() {
               <OrderItemForm onSubmit={handleEditOrderItem} initialData={editingItem} />
             )}
           </DialogContent>
-        </Dialog>
+         </Dialog>
       </div>
     </div>
   );
